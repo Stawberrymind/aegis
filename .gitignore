@@ -1,0 +1,30 @@
+# Node and frontend
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Python and backend
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Secrets and local data
+.env
+.env.*
+!.env.example
+data/submissions/
+data/source-cache/
+data/embedding-cache/
+*.sqlite3
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

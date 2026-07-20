@@ -1,0 +1,362 @@
+[
+  {
+    "id": "demo-official-sector4-evac-2026-07-20",
+    "title": "Demo Sector 4 flood advisory: no evacuation order",
+    "body": "Demo notice: No evacuation order has been issued for Sector 4. Residents should remain indoors, keep phones charged, and monitor official demo channels for updates.",
+    "language": "en",
+    "published_at": "2026-07-20T10:00:00+05:30",
+    "source_name": "Demo District Disaster Management Office",
+    "source_url": "https://example.invalid/aegis-demo/sector-4-no-evacuation",
+    "source_type": "demo_official_notice",
+    "scope": "Sector 4",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "evacuation_order",
+        "location": "Sector 4",
+        "polarity": "negated",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-official-sector4-hi-evac-2026-07-20",
+    "title": "डेमो सेक्टर 4 बाढ़ सलाह: निकासी आदेश नहीं",
+    "body": "डेमो सूचना: सेक्टर 4 के लिए कोई निकासी आदेश जारी नहीं किया गया है। निवासी घर के अंदर रहें और आधिकारिक डेमो चैनल देखें।",
+    "language": "hi",
+    "published_at": "2026-07-20T10:10:00+05:30",
+    "source_name": "Demo District Disaster Management Office",
+    "source_url": "https://example.invalid/aegis-demo/sector-4-no-evacuation-hi",
+    "source_type": "demo_official_notice",
+    "scope": "Sector 4",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "evacuation_order",
+        "location": "Sector 4",
+        "polarity": "negated",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-safety-ward7-boil-water-2026-07-20",
+    "title": "Demo Ward 7 water safety advisory",
+    "body": "Demo advisory: Ward 7 residents should boil drinking water for at least three minutes until the sample retest is complete. Tanker water distribution is open at Community Hall B.",
+    "language": "en",
+    "published_at": "2026-07-20T09:30:00+05:30",
+    "source_name": "Demo Municipal Health Cell",
+    "source_url": "https://example.invalid/aegis-demo/ward-7-boil-water",
+    "source_type": "demo_public_health_advisory",
+    "scope": "Ward 7",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "boil_water_advisory",
+        "location": "Ward 7",
+        "polarity": "asserted",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-safety-ward7-hi-boil-water-2026-07-20",
+    "title": "डेमो वार्ड 7 पानी सुरक्षा सलाह",
+    "body": "डेमो सलाह: वार्ड 7 के निवासी पीने के पानी को कम से कम तीन मिनट उबालें। कम्युनिटी हॉल बी में टैंकर पानी उपलब्ध है।",
+    "language": "hi",
+    "published_at": "2026-07-20T09:35:00+05:30",
+    "source_name": "Demo Municipal Health Cell",
+    "source_url": "https://example.invalid/aegis-demo/ward-7-boil-water-hi",
+    "source_type": "demo_public_health_advisory",
+    "scope": "Ward 7",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "boil_water_advisory",
+        "location": "Ward 7",
+        "polarity": "asserted",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-video-market-no-confirmation-2026-07-20",
+    "title": "Demo Market Road video status",
+    "body": "Demo media desk note: No verified official record confirms the circulating Market Road explosion video. Metadata or provenance credentials are unavailable in the submitted copy.",
+    "language": "en",
+    "published_at": "2026-07-20T11:00:00+05:30",
+    "source_name": "Demo Civic Information Desk",
+    "source_url": "https://example.invalid/aegis-demo/market-road-video-unverified",
+    "source_type": "demo_media_status_note",
+    "scope": "Market Road",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "altered_video_authenticity",
+        "location": "Market Road",
+        "polarity": "unknown",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-bridge-a-closure-2026-07-20",
+    "title": "Demo Bridge A closed to pedestrian traffic",
+    "body": "Demo notice: Bridge A is closed to pedestrian traffic from 18:00 today because of waterlogging inspection. Use the signed route through Lake Road.",
+    "language": "en",
+    "published_at": "2026-07-20T14:00:00+05:30",
+    "source_name": "Demo Traffic Coordination Cell",
+    "source_url": "https://example.invalid/aegis-demo/bridge-a-closed",
+    "source_type": "demo_transport_notice",
+    "scope": "Bridge A",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "road_closure",
+        "location": "Bridge A",
+        "polarity": "asserted",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-lake-road-open-2026-07-20",
+    "title": "Demo Lake Road remains open",
+    "body": "Demo update: Lake Road remains open for light vehicles. Do not share messages claiming Lake Road is fully closed unless a newer official demo notice appears.",
+    "language": "en",
+    "published_at": "2026-07-20T13:45:00+05:30",
+    "source_name": "Demo Traffic Coordination Cell",
+    "source_url": "https://example.invalid/aegis-demo/lake-road-open",
+    "source_type": "demo_transport_notice",
+    "scope": "Lake Road",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "road_closure",
+        "location": "Lake Road",
+        "polarity": "negated",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-riverside-school-shelter-2026-07-20",
+    "title": "Demo Riverside School relief shelter open",
+    "body": "Demo advisory: Riverside School shelter is open for families affected by local waterlogging. Bring essential medicines and identity documents if available.",
+    "language": "en",
+    "published_at": "2026-07-20T08:25:00+05:30",
+    "source_name": "Demo Relief Coordination Desk",
+    "source_url": "https://example.invalid/aegis-demo/riverside-school-shelter",
+    "source_type": "demo_relief_advisory",
+    "scope": "Riverside School",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "relief_shelter_open",
+        "location": "Riverside School",
+        "polarity": "asserted",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-donation-bank-account-fraud-warning-2026-07-20",
+    "title": "Demo donation request warning",
+    "body": "Demo warning: The district has not published any private bank account for crisis donations. Use only the listed official relief portal in demo materials.",
+    "language": "en",
+    "published_at": "2026-07-20T12:20:00+05:30",
+    "source_name": "Demo District Public Information Office",
+    "source_url": "https://example.invalid/aegis-demo/private-bank-donation-warning",
+    "source_type": "demo_public_warning",
+    "scope": "District donations",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "private_donation_account",
+        "location": "District",
+        "polarity": "negated",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-industrial-gate-chemical-rumour-2026-07-20",
+    "title": "Demo Industrial Gate chemical leak status",
+    "body": "Demo update: No chemical leak has been confirmed near Industrial Gate. Air-quality checks are ongoing and residents should follow normal indoor safety guidance.",
+    "language": "en",
+    "published_at": "2026-07-20T15:00:00+05:30",
+    "source_name": "Demo Environmental Safety Cell",
+    "source_url": "https://example.invalid/aegis-demo/industrial-gate-no-chemical-leak",
+    "source_type": "demo_environment_notice",
+    "scope": "Industrial Gate",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "chemical_leak",
+        "location": "Industrial Gate",
+        "polarity": "negated",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-old-sector4-evac-2026-06-01",
+    "title": "Old demo Sector 4 evacuation drill notice",
+    "body": "Archived demo drill notice: Sector 4 evacuation drill was scheduled for 1 June 2026. This record is not current emergency evidence.",
+    "language": "en",
+    "published_at": "2026-06-01T09:00:00+05:30",
+    "source_name": "Demo District Disaster Management Office",
+    "source_url": "https://example.invalid/aegis-demo/archive-sector-4-drill",
+    "source_type": "demo_archive_notice",
+    "scope": "Sector 4",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "evacuation_order",
+        "location": "Sector 4",
+        "polarity": "asserted",
+        "time_scope": "stale"
+      }
+    ]
+  },
+  {
+    "id": "demo-ward2-power-cut-2026-07-20",
+    "title": "Demo Ward 2 controlled power shutdown",
+    "body": "Demo notice: Ward 2 has a controlled power shutdown from 13:00 to 15:00 for transformer inspection.",
+    "language": "en",
+    "published_at": "2026-07-20T07:00:00+05:30",
+    "source_name": "Demo Electricity Response Desk",
+    "source_url": "https://example.invalid/aegis-demo/ward-2-power-shutdown",
+    "source_type": "demo_utility_notice",
+    "scope": "Ward 2",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "power_shutdown",
+        "location": "Ward 2",
+        "polarity": "asserted",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-metro-station-open-2026-07-20",
+    "title": "Demo Central Metro station open",
+    "body": "Demo transit update: Central Metro station is open. Entry Gate 3 is temporarily closed, but other gates are operating.",
+    "language": "en",
+    "published_at": "2026-07-20T16:00:00+05:30",
+    "source_name": "Demo Transit Information Cell",
+    "source_url": "https://example.invalid/aegis-demo/central-metro-open",
+    "source_type": "demo_transport_notice",
+    "scope": "Central Metro",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "station_closed",
+        "location": "Central Metro",
+        "polarity": "negated",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-medical-camp-park3-2026-07-20",
+    "title": "Demo medical camp at Park 3",
+    "body": "Demo health advisory: A first-aid and medicine camp is open at Park 3 from 10:00 to 18:00 today.",
+    "language": "en",
+    "published_at": "2026-07-20T06:30:00+05:30",
+    "source_name": "Demo Public Health Desk",
+    "source_url": "https://example.invalid/aegis-demo/park-3-medical-camp",
+    "source_type": "demo_public_health_advisory",
+    "scope": "Park 3",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "medical_camp_open",
+        "location": "Park 3",
+        "polarity": "asserted",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-food-packet-center-closed-2026-07-20",
+    "title": "Demo Old Bus Stand food distribution moved",
+    "body": "Demo relief update: Food packet distribution is not operating at Old Bus Stand. The active counter is Community Hall B.",
+    "language": "en",
+    "published_at": "2026-07-20T11:30:00+05:30",
+    "source_name": "Demo Relief Coordination Desk",
+    "source_url": "https://example.invalid/aegis-demo/old-bus-stand-food-moved",
+    "source_type": "demo_relief_advisory",
+    "scope": "Old Bus Stand",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "food_distribution_open",
+        "location": "Old Bus Stand",
+        "polarity": "negated",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-helpline-number-confirmed-2026-07-20",
+    "title": "Demo emergency helpline reminder",
+    "body": "Demo public-safety note: For immediate danger, use the national emergency number 112. AEGIS does not replace emergency services.",
+    "language": "en",
+    "published_at": "2026-07-20T05:00:00+05:30",
+    "source_name": "Demo Public Safety Desk",
+    "source_url": "https://example.invalid/aegis-demo/112-reminder",
+    "source_type": "demo_public_safety_note",
+    "scope": "Emergency help",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "emergency_number",
+        "location": "India",
+        "polarity": "asserted",
+        "time_scope": "standing"
+      }
+    ]
+  },
+  {
+    "id": "demo-school-closure-not-established-2026-07-20",
+    "title": "Demo school closure status pending",
+    "body": "Demo education desk note: No district-wide school closure order is available in the demo evidence set. Families should check their school's official channel.",
+    "language": "en",
+    "published_at": "2026-07-20T07:45:00+05:30",
+    "source_name": "Demo Education Information Desk",
+    "source_url": "https://example.invalid/aegis-demo/school-closure-pending",
+    "source_type": "demo_status_note",
+    "scope": "District schools",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "school_closed",
+        "location": "District",
+        "polarity": "unknown",
+        "time_scope": "current"
+      }
+    ]
+  },
+  {
+    "id": "demo-dam-gate-rumour-2026-07-20",
+    "title": "Demo dam gate rumour status",
+    "body": "Demo update: No unscheduled dam gate release has been announced. Low-lying households should still monitor official flood advisories.",
+    "language": "en",
+    "published_at": "2026-07-20T12:50:00+05:30",
+    "source_name": "Demo Water Resources Desk",
+    "source_url": "https://example.invalid/aegis-demo/no-unscheduled-dam-release",
+    "source_type": "demo_water_notice",
+    "scope": "River belt",
+    "fixture_type": "fixture",
+    "assertions": [
+      {
+        "predicate": "dam_gate_release",
+        "location": "River belt",
+        "polarity": "negated",
+        "time_scope": "current"
+      }
+    ]
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "ndma-sachet-india-cap-rss",
+    "name": "NDMA SACHET India CAP RSS",
+    "base_url": "https://sachet.ndma.gov.in/cap_public_website/rss/rss_india.xml",
+    "allowed_hosts": ["sachet.ndma.gov.in"],
+    "enabled": true,
+    "parser": "cap-rss-v1",
+    "cache_ttl_seconds": 300,
+    "notes": "Official India CAP RSS feed listed for National Disaster Management Authority of India in the WMO Register of Alerting Authorities."
+  },
+  {
+    "id": "imd-cap-rss",
+    "name": "India Meteorological Department CAP RSS",
+    "base_url": "https://cap-sources.s3.amazonaws.com/in-imd-en/rss.xml",
+    "allowed_hosts": ["cap-sources.s3.amazonaws.com"],
+    "enabled": false,
+    "parser": "cap-rss-v1",
+    "cache_ttl_seconds": 300,
+    "notes": "Disabled by default. WMO lists IMD CAP alerts, but the current app uses NDMA SACHET as the primary official live feed."
+  }
+]

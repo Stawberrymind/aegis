@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AEGIS Crisis-Claim Verification</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">AI evidence layer for crisis claims</p>
+        <h1>Check a forwarded public-safety claim before treating it as fact.</h1>
+        <p>
+          AEGIS extracts the material claim, compares it with trusted evidence, and returns only
+          <code>supported</code>, <code>contradicted</code>, or <code>not_established</code>.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="submit-heading">
+        <h2 id="submit-heading">Submit text</h2>
+        <label for="claim-text">Message or claim</label>
+        <textarea id="claim-text" rows="6">Urgent: District officials ordered everyone in Sector 4 to evacuate tonight before 9 PM.</textarea>
+        <div class="row">
+          <label for="language">Language</label>
+          <select id="language">
+            <option value="">Auto detect</option>
+            <option value="en">English</option>
+            <option value="hi">Hindi</option>
+          </select>
+          <label for="location">Location scope</label>
+          <select id="location">
+            <option value="">Auto / claim text</option>
+            <option value="India">Overall India</option>
+            <option value="Hyderabad">Hyderabad / HYD</option>
+            <option value="Bengaluru">Bengaluru / BLR</option>
+            <option value="Delhi">Delhi</option>
+            <option value="Mumbai">Mumbai</option>
+            <option value="Chennai">Chennai</option>
+            <option value="Kolkata">Kolkata</option>
+          </select>
+          <button id="analyze">Analyze claim</button>
+        </div>
+        <div id="demo-scenarios" class="demo-scenarios" aria-label="Demo scenarios"></div>
+        <p class="privacy">Local demo: text is sent only to the local AEGIS API you run.</p>
+      </section>
+
+      <section class="card" aria-live="polite" aria-labelledby="result-heading">
+        <h2 id="result-heading">Result</h2>
+        <div id="result">Start the app with <code>npm run api</code>, open <code>http://localhost:8787</code>, then click Analyze.</div>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
