@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "api": "node services/api/src/server.mjs",
-    "test": "node --test tests/api/pipeline.test.mjs tests/api/evaluation.test.mjs",
+    "test": "node --test tests/api/pipeline.test.mjs tests/api/evaluation.test.mjs tests/api/hardening.test.mjs",
+    "test:web": "playwright test tests/web/aegis.e2e.spec.mjs",
+    "test:all": "npm test && npm run test:web",
     "demo:analyze": "node services/api/src/cli.mjs"
   },
   "engines": {
@@ -16,5 +18,8 @@
     "@contentauth/c2pa-node": "^0.5.0",
     "@huggingface/transformers": "^3.8.1",
     "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
   }
 }

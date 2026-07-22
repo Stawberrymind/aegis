@@ -91,3 +91,28 @@
 - 2026-07-22T22:35:00+05:30 [USER] Requested a timeline of what is happening plus Normal and Expert website modes.
 - 2026-07-22T22:35:00+05:30 [CODE] Added an instant Normal/Expert view switch, dynamic submission-understanding-evidence-verdict timeline, concise normal-mode sections, and full extraction/retrieval/provenance detail in Expert mode.
 - 2026-07-22T22:35:00+05:30 [TOOL] Frontend syntax and diff checks pass; API behavior remains unchanged.
+
+## [PROGRESS]
+
+- 2026-07-22T23:10:00+05:30 [USER] Requested source resilience, API safeguards, browser E2E/accessibility/mobile checks, PIB/state/social integrations, stronger multilingual media support, local voice transcription, broader evaluation, and source history.
+- 2026-07-22T23:10:00+05:30 [CODE] Added bounded trusted-source retries, per-source spacing, six-hour cache fallback labelled `live_cache`, source history/catalog endpoints, optional PIB Fact Check and Goa/Meghalaya SDMA HTML adapters, and an official X API v2 adapter that stays reference-only without credentials.
+- 2026-07-22T23:10:00+05:30 [CODE] Added in-memory analysis/refresh rate limiting, robust 413/400 request handling, memory-only media/audio retention policy, low-confidence OCR fallback, chunked local translation, PCM WAV Transformers.js Whisper transcription, privacy/data/voice/source-history documentation, and expanded hardening tests.
+- 2026-07-22T23:10:00+05:30 [CODE] Added Playwright configuration and deterministic browser tests covering analyze/location/timeline, OCR plus Normal/Expert switching, accessible controls, and mobile overflow.
+
+## [OUTCOMES]
+
+- 2026-07-22T23:10:00+05:30 [TOOL] Full validation passes: 36/36 API tests and 3/3 Playwright Chromium E2E tests. `git diff --check` passes with only expected Windows line-ending warnings.
+
+## [PLANS]
+
+- 2026-07-22T23:35:00+05:30 [USER] Approved a step-wise interactive redesign with less rounded chrome, clearer Normal/Expert separation, and a more dynamic checking flow.
+
+## [PROGRESS]
+
+- 2026-07-22T23:35:00+05:30 [CODE] Reworked the web interaction into Add claim, Set context, Check, and Review steps while preserving the existing `/analyze` payload and media flows.
+- 2026-07-22T23:35:00+05:30 [CODE] Added Answer, Understanding, Evidence, Timeline, and Expert result tabs, plus a checking-progress state, location/language context preview, input-method switch, sharper square-edged surfaces, responsive behavior, and reduced-motion handling.
+- 2026-07-22T23:35:00+05:30 [CODE] Updated browser coverage for the wizard, OCR input, result tabs, Normal/Expert switching, location selection, and mobile layout.
+
+## [OUTCOMES]
+
+- 2026-07-22T23:35:00+05:30 [TOOL] Full API validation passes 49/49 and Playwright Chromium validation passes 3/3 after the redesign.

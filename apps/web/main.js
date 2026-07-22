@@ -1,6 +1,7 @@
 const button = document.querySelector("#analyze");
 const text = document.querySelector("#claim-text");
 const image = document.querySelector("#claim-image");
+const audio = document.querySelector("#claim-audio");
 const language = document.querySelector("#language");
 const locationScope = document.querySelector("#location");
 const result = document.querySelector("#result");
@@ -8,20 +9,52 @@ const resultCard = document.querySelector(".result-card");
 const charCount = document.querySelector("#char-count");
 const clearClaim = document.querySelector("#clear-claim");
 const imagePreview = document.querySelector("#image-preview");
+const audioPreview = document.querySelector("#audio-preview");
 const viewModeHelp = document.querySelector("#view-mode-help");
+const submitCard = document.querySelector(".submit-card");
+const progressCard = document.querySelector("#analysis-progress");
+const wizardStepper = document.querySelector("#wizard-stepper");
+const resultTabs = document.querySelector("#result-tabs");
 const apiBase = window.location.protocol === "file:" ? "http://localhost:8787" : "";
 let imagePreviewUrl = null;
 let viewMode = "normal";
 let latestAnalysis = null;
+let wizardStep = 1;
+let resultTab = "answer";
+let inputMode = "text";
+let progressTimer = null;
 
 button.addEventListener("click", analyzeClaim);
 result.addEventListener("click", handleClarificationAction);
+resultTabs.addEventListener("click", (event) => {
+  const tab = event.target.closest("[data-result-tab]");
+  if (tab) setResultTab(tab.dataset.resultTab);
+});
+resultTabs.addEventListener("keydown", (event) => {
+  const tabs = [...resultTabs.querySelectorAll('[role="tab"]')].filter((tab) => !tab.hidden);
+  const current = tabs.indexOf(event.target.closest('[role="tab"]'));
+  if (current < 0 || !["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Home", "End"].includes(event.key)) return;
+  event.preventDefault();
+  const next = event.key === "Home"
+    ? 0
+    : event.key === "End"
+      ? tabs.length - 1
+      : (current + (event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1) + tabs.length) % tabs.length;
+  setResultTab(tabs[next].dataset.resultTab);
+  tabs[next].focus();
+});
+wizardStepper.addEventListener("click", (event) => {
+  const control = event.target.closest("[data-wizard-target]");
+  const target = Number(control?.dataset.wizardTarget);
+  if (target && target <= 2) setWizardStep(target);
+});
 document.querySelectorAll("[data-view-mode]").forEach((control) => {
   control.addEventListener("click", () => setViewMode(control.dataset.viewMode));
 });
 text.addEventListener("input", updateCharacterCount);
 clearClaim.addEventListener("click", clearClaimText);
 image.addEventListener("change", renderImageSelection);
+audio.addEventListener("change", renderAudioSelection);
 imagePreview.addEventListener("click", (event) => {
   if (event.target.closest("[data-remove-image]")) clearSelectedImage();
 });
@@ -34,7 +67,170 @@ document.querySelectorAll("[data-example]").forEach((example) => {
   });
 });
 
+setupWizard();
 updateCharacterCount();
+
+function setupWizard() {
+  const claimLabel = submitCard.querySelector('label[for="claim-text"]');
+  const composerTools = submitCard.querySelector(".composer-tools");
+  const exampleStrip = submitCard.querySelector(".example-strip");
+  const mediaBlocks = [...submitCard.querySelectorAll(".media-upload")];
+  const formGrid = submitCard.querySelector(".form-grid");
+  const liveNote = submitCard.querySelector(".live-only-note");
+  const privacy = submitCard.querySelector(".privacy");
+  const stepOne = document.createElement("div");
+  const stepTwo = document.createElement("div");
+  stepOne.className = "wizard-pane";
+  stepTwo.className = "wizard-pane";
+  stepOne.dataset.wizardPane = "1";
+  stepTwo.dataset.wizardPane = "2";
+
+  const methodSwitch = document.createElement("div");
+  methodSwitch.className = "input-method-switch";
+  methodSwitch.setAttribute("role", "tablist");
+  methodSwitch.setAttribute("aria-label", "Choose claim input type");
+  for (const [value, label] of [["text", "Type or paste"], ["image", "Upload image"], ["audio", "Voice note"]]) {
+    const control = document.createElement("button");
+    control.type = "button";
+    control.dataset.inputMode = value;
+    control.setAttribute("role", "tab");
+    control.textContent = label;
+    control.addEventListener("click", () => setInputMode(value));
+    methodSwitch.append(control);
+  }
+
+  const textPanel = document.createElement("div");
+  textPanel.className = "input-panel";
+  textPanel.dataset.inputPanel = "text";
+  textPanel.append(claimLabel, text, composerTools, exampleStrip);
+  const imagePanel = document.createElement("div");
+  imagePanel.className = "input-panel";
+  imagePanel.dataset.inputPanel = "image";
+  imagePanel.append(mediaBlocks[0]);
+  const audioPanel = document.createElement("div");
+  audioPanel.className = "input-panel";
+  audioPanel.dataset.inputPanel = "audio";
+  audioPanel.append(mediaBlocks[1]);
+
+  const stepOneHeading = document.createElement("div");
+  stepOneHeading.className = "wizard-heading";
+  stepOneHeading.innerHTML = '<p class="step-label">Step 1 · Add claim</p><h2 id="submit-heading">What should AEGIS check?</h2><p>Paste the forwarded message, or choose an image or voice note.</p>';
+  if (privacy) {
+    const privacyNote = document.createElement("span");
+    privacyNote.className = "wizard-privacy";
+    privacyNote.textContent = privacy.textContent;
+    stepOneHeading.append(privacyNote);
+  }
+  stepOne.append(stepOneHeading, methodSwitch, textPanel, imagePanel, audioPanel);
+  const continueButton = document.createElement("button");
+  continueButton.type = "button";
+  continueButton.className = "wizard-next-button";
+  continueButton.textContent = "Continue to context";
+  continueButton.addEventListener("click", () => {
+    if (!hasSubmission()) {
+      showStepError("Add a message, image, or voice note before continuing.");
+      return;
+    }
+    clearStepError();
+    updateContextPreview();
+    setWizardStep(2);
+  });
+  stepOne.append(continueButton);
+
+  const contextHeading = document.createElement("div");
+  contextHeading.className = "wizard-heading";
+  contextHeading.innerHTML = '<p class="step-label">Step 2 · Set context</p><h2>Where and in which language?</h2><p>These choices help AEGIS check the exact scope of the claim.</p>';
+  const contextPreview = document.createElement("div");
+  contextPreview.id = "context-preview";
+  contextPreview.className = "context-preview";
+  const contextActions = document.createElement("div");
+  contextActions.className = "wizard-actions";
+  const backButton = document.createElement("button");
+  backButton.type = "button";
+  backButton.className = "secondary-button";
+  backButton.textContent = "Back";
+  backButton.addEventListener("click", () => setWizardStep(1));
+  contextActions.append(backButton, button);
+  stepTwo.append(contextHeading, contextPreview, formGrid, liveNote, contextActions);
+
+  submitCard.replaceChildren(stepOne, stepTwo);
+  setInputMode("text");
+  setWizardStep(1);
+  text.addEventListener("input", updateContextPreview);
+  locationScope.addEventListener("change", updateContextPreview);
+}
+
+function hasSubmission() {
+  return Boolean(text.value.trim() || image.files.length || audio.files.length);
+}
+
+function setInputMode(mode) {
+  inputMode = ["text", "image", "audio"].includes(mode) ? mode : "text";
+  document.querySelectorAll("[data-input-mode]").forEach((control) => {
+    const active = control.dataset.inputMode === inputMode;
+    control.classList.toggle("active", active);
+    control.setAttribute("aria-selected", String(active));
+  });
+  document.querySelectorAll("[data-input-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.inputPanel !== inputMode;
+  });
+}
+
+function updateContextPreview() {
+  const preview = document.querySelector("#context-preview");
+  if (!preview) return;
+  const source = text.value.trim() || (image.files.length ? `Image · ${image.files[0].name}` : audio.files.length ? `Voice note · ${audio.files[0].name}` : "No claim added yet");
+  preview.innerHTML = `<span>Claim to check</span><strong>${escapeHtml(source.slice(0, 180))}${source.length > 180 ? "…" : ""}</strong><small>${escapeHtml(locationScope.value || "Location will be read from the claim")} · ${escapeHtml(language.options[language.selectedIndex]?.text || "Auto detect")}</small>`;
+}
+
+function showStepError(message, pane = wizardStep === 1 ? 1 : 2) {
+  clearStepError();
+  const error = document.createElement("p");
+  error.className = "step-error";
+  error.id = "wizard-error";
+  error.setAttribute("role", "alert");
+  error.textContent = message;
+  submitCard.querySelector(`[data-wizard-pane="${pane}"]`)?.append(error);
+}
+
+function clearStepError() {
+  document.querySelector("#wizard-error")?.remove();
+}
+
+function setWizardStep(step) {
+  wizardStep = Math.max(1, Math.min(4, Number(step) || 1));
+  document.querySelectorAll("[data-wizard-pane]").forEach((pane) => {
+    pane.hidden = Number(pane.dataset.wizardPane) !== wizardStep;
+  });
+  submitCard.hidden = wizardStep >= 3;
+  progressCard.hidden = wizardStep !== 3;
+  resultCard.classList.toggle("is-hidden", wizardStep !== 4);
+  document.body.classList.toggle("has-result", wizardStep === 4);
+  wizardStepper.querySelectorAll("[data-wizard-target]").forEach((control) => {
+    const target = Number(control.dataset.wizardTarget);
+    control.classList.toggle("active", target === wizardStep);
+    control.classList.toggle("complete", target < wizardStep);
+    if (target === wizardStep) control.setAttribute("aria-current", "step");
+    else control.removeAttribute("aria-current");
+  });
+  if (wizardStep === 3) startProgressAnimation();
+  else stopProgressAnimation();
+  if (wizardStep === 2) updateContextPreview();
+}
+
+function startProgressAnimation() {
+  stopProgressAnimation();
+  let index = 0;
+  const stages = [...document.querySelectorAll("[data-progress-stage]")];
+  const update = () => stages.forEach((stage, stageIndex) => stage.classList.toggle("active", stageIndex === index));
+  update();
+  progressTimer = window.setInterval(() => { index = (index + 1) % stages.length; update(); }, 900);
+}
+
+function stopProgressAnimation() {
+  if (progressTimer) window.clearInterval(progressTimer);
+  progressTimer = null;
+}
 
 function updateCharacterCount() {
   const count = text.value.length;
@@ -71,6 +267,17 @@ function clearSelectedImage() {
   imagePreview.innerHTML = "";
 }
 
+function renderAudioSelection() {
+  const file = audio.files[0];
+  if (!file) {
+    audioPreview.hidden = true;
+    audioPreview.innerHTML = "";
+    return;
+  }
+  audioPreview.hidden = false;
+  audioPreview.innerHTML = `<strong>${escapeHtml(file.name)}</strong><span>${escapeHtml(formatBytes(file.size))} · Ready for local transcription</span>`;
+}
+
 function handleClarificationAction(event) {
   const control = event.target.closest("[data-clarification-action]");
   if (!control) return;
@@ -93,69 +300,152 @@ function setViewMode(mode) {
   if (latestAnalysis) renderResult(latestAnalysis);
 }
 
+function setResultTab(tab) {
+  const allowedTabs = ["answer", "understanding", "evidence", "timeline", "technical"];
+  resultTab = allowedTabs.includes(tab) ? tab : "answer";
+  if (resultTab === "technical" && viewMode !== "expert") resultTab = "answer";
+  resultTabs.querySelectorAll("[data-result-tab]").forEach((control) => {
+    const active = control.dataset.resultTab === resultTab;
+    control.hidden = control.hasAttribute("data-expert-only") && viewMode !== "expert";
+    control.setAttribute("aria-selected", String(active));
+    control.setAttribute("aria-controls", `result-panel-${control.dataset.resultTab}`);
+    control.tabIndex = active ? 0 : -1;
+  });
+  result.querySelectorAll("[data-result-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.resultPanel !== resultTab;
+  });
+}
+
 async function analyzeClaim() {
-  if (!text.value.trim() && !image.files.length) {
-    result.innerHTML = `<p class="error-callout">Enter a claim or forwarded message first.</p>`;
+  if (!hasSubmission()) {
+    setWizardStep(1);
+    showStepError("Add a message, image, or voice note before checking.");
     text.focus();
     return;
   }
 
+  clearStepError();
+  setWizardStep(3);
   setLoading(true);
-  result.className = "analysis-loading";
-  result.innerHTML = `
-    <div class="spinner" aria-hidden="true"></div>
-    <div><strong>AEGIS is checking the claim…</strong><p>Extracting details, refreshing trusted evidence, and ranking semantic matches.</p></div>
-  `;
 
   try {
     const imagePayload = image.files.length ? await readImage(image.files[0]) : undefined;
+    const audioPayload = audio.files.length ? await readAudio(audio.files[0]) : undefined;
     const response = await fetch(`${apiBase}/analyze`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         text: text.value,
         image: imagePayload,
+        audio: audioPayload,
         language: language.value || undefined,
-        location: locationScope.value || undefined,
-        analysis_at: new Date().toISOString()
+        location: locationScope.value || undefined
       })
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Analysis failed");
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(data.error || "Analysis failed");
+      error.status = response.status;
+      error.code = data.code;
+      error.retryAfter = response.headers.get("retry-after");
+      throw error;
+    }
     renderResult(data);
   } catch (error) {
-    result.className = "";
-    result.innerHTML = `
-      <div class="error-callout">
-        <strong>AEGIS could not complete the analysis.</strong>
-        <p>${escapeHtml(error.message)}</p>
-        <p>Start the service with <code>npm run api</code>, then use <code>http://localhost:8787</code>.</p>
-      </div>
-    `;
+    const message = friendlyErrorMessage(error);
+    setWizardStep(2);
+    showStepError(`AEGIS could not complete the analysis. ${message}`);
   } finally {
     setLoading(false);
   }
 }
 
+function friendlyErrorMessage(error) {
+  if (error?.status === 429) return `Too many analyses in a short period. Try again${error.retryAfter ? ` in ${error.retryAfter} seconds` : " shortly"}.`;
+  if (error?.status === 413) return "The upload is too large. Choose a smaller image or voice note.";
+  if (error?.status === 400) return error.message || "The submitted claim or media could not be read.";
+  if (error?.code === "internal_error") return "The local service encountered an internal error. Review the terminal for the operator-safe diagnostic.";
+  if (error instanceof TypeError) return "AEGIS could not reach the local service. Start it with npm run api, then use http://localhost:8787.";
+  return error?.message || "Analysis failed. Try again.";
+}
+
 function setLoading(loading) {
   button.disabled = loading;
-  button.textContent = loading ? "Analyzing…" : "Analyze claim";
+  button.textContent = loading ? "Checking…" : "Check this claim";
+  wizardStepper.querySelectorAll("[data-wizard-target]").forEach((control) => { control.disabled = loading; });
   resultCard.setAttribute("aria-busy", String(loading));
 }
 
 function renderResult(data) {
   latestAnalysis = data;
   result.className = "analysis-result";
+  const claims = data.claims || [];
   result.innerHTML = `
-    ${renderRunOverview(data)}
-    ${renderMedia(data.media, viewMode)}
-    ${renderTimeline(data)}
-    ${data.claims.map((claim, index) => renderClaim(claim, index, data.claims.length, data.translation, viewMode)).join("")}
-    <div class="disclaimer-box">
-      <strong>Important limitations</strong>
-      <ul>${data.disclaimers.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
-    </div>
+    <section id="result-panel-answer" class="result-panel" data-result-panel="answer" role="tabpanel" tabindex="0" aria-labelledby="result-tab-answer answer-heading">
+      <div class="result-panel-intro"><p class="mini-label">Normal mode</p><h3 id="answer-heading">The clearest answer first</h3><p>Use this view to decide what to do next. Open the other sections when you need the reasoning.</p></div>
+      ${claims.map((claim, index) => renderAnswerClaim(claim, index, claims.length)).join("")}
+      ${renderDisclaimer(data)}
+    </section>
+    <section id="result-panel-understanding" class="result-panel" data-result-panel="understanding" role="tabpanel" tabindex="0" aria-labelledby="result-tab-understanding understanding-tab-heading" hidden>
+      <div class="result-panel-intro"><p class="mini-label">Interpretation</p><h3 id="understanding-tab-heading">What AEGIS understood</h3><p>AI extracts the incident, place, time, action, and language before evidence is compared.</p></div>
+      ${renderMedia(data.media, viewMode)}
+      ${renderAudioResult(data.audio, viewMode)}
+      ${claims.map((claim) => viewMode === "expert" ? renderUnderstanding(claim.ai_analysis?.understanding, claim.claim) : renderBasicUnderstanding(claim.ai_analysis?.understanding, claim.claim)).join("")}
+    </section>
+    <section id="result-panel-evidence" class="result-panel" data-result-panel="evidence" role="tabpanel" tabindex="0" aria-labelledby="result-tab-evidence evidence-tab-heading" hidden>
+      <div class="result-panel-intro"><p class="mini-label">Trusted sources</p><h3 id="evidence-tab-heading">Evidence and source comparison</h3><p>Only records that pass the type, location, freshness, and provenance rules can establish a verdict.</p></div>
+      ${renderSourceFetch(data.source_fetch)}
+      ${claims.map((claim, index) => renderEvidenceTab(claim, index, data.translation)).join("")}
+    </section>
+    <section id="result-panel-timeline" class="result-panel" data-result-panel="timeline" role="tabpanel" tabindex="0" aria-labelledby="result-tab-timeline timeline-tab-heading" hidden>
+      <div class="result-panel-intro"><p class="mini-label">Process trace</p><h3 id="timeline-tab-heading">How AEGIS reached the result</h3><p>Follow the check from submission through interpretation, trusted-source retrieval, and the final evidence rule.</p></div>
+      ${renderTimeline(data)}
+    </section>
+    <section id="result-panel-technical" class="result-panel" data-result-panel="technical" role="tabpanel" tabindex="0" aria-labelledby="result-tab-technical technical-tab-heading" hidden>
+      <div class="result-panel-intro"><p class="mini-label">Expert mode</p><h3 id="technical-tab-heading">Full extraction, retrieval, and policy detail</h3><p>Scores are ranking signals only. The verdict remains evidence-linked and policy constrained.</p></div>
+      ${renderMedia(data.media, "expert")}
+      ${renderAudioResult(data.audio, "expert")}
+      ${claims.map((claim, index) => renderClaim(claim, index, claims.length, data.translation, "expert")).join("")}
+      ${renderDisclaimer(data)}
+    </section>
   `;
+  setWizardStep(4);
+  setResultTab(resultTab);
+}
+
+function renderAnswerClaim(claim, index, totalClaims) {
+  const item = claim.evidence?.[0];
+  const understanding = claim.ai_analysis?.understanding;
+  const location = understanding?.fields?.location || claim.claim?.location || "the selected scope";
+  return `
+    <article class="answer-claim">
+      ${totalClaims > 1 ? `<p class="claim-number">Claim ${index + 1} of ${totalClaims}</p>` : ""}
+      <section class="verdict-panel ${escapeHtml(claim.verdict)}">
+        <div><p class="verdict-kicker">Evidence verdict</p><p class="verdict">${escapeHtml(humanize(claim.verdict))}</p></div>
+        <div class="confidence"><span>Evidence confidence</span><strong>${escapeHtml(humanize(claim.confidence_band))}</strong><small>${Number.isFinite(claim.confidence_score) ? `${Math.round(claim.confidence_score * 100)}% policy score` : "Policy score unavailable"}</small></div>
+      </section>
+      <div class="answer-rationale"><p class="mini-label">In plain language</p><p>${escapeHtml(claim.rationale || `AEGIS found no clear conclusion for ${location}.`)}</p><small>Scope checked: ${escapeHtml(location)}</small></div>
+      <section class="safe-action"><span aria-hidden="true">!</span><div><p class="mini-label">Recommended safe action</p><p>${escapeHtml(claim.safety_note || "Verify with the relevant official authority before acting or forwarding.")}</p></div></section>
+      ${item ? `<div class="answer-source"><span class="origin-tag">${escapeHtml(humanize(item.evidence_origin))}</span><div><strong>Evidence used</strong><p>${escapeHtml(item.title)} · ${escapeHtml(item.source_name)}</p></div>${renderSourceLink(item)}</div>` : `<div class="neutral-callout"><strong>No single source established this claim.</strong><p>Open Evidence to see what was checked and why related records may not count.</p></div>`}
+    </article>
+  `;
+}
+
+function renderEvidenceTab(claim, index, translation) {
+  const search = claim.ai_analysis?.evidence_search;
+  return `
+    <section class="evidence-tab-section" aria-labelledby="evidence-claim-${index}">
+      ${claim.claim?.location || claim.claim?.predicate ? `<h4 id="evidence-claim-${index}">${escapeHtml(humanize(claim.claim?.predicate || "Claim"))}${claim.claim?.location ? ` · ${escapeHtml(claim.claim.location)}` : ""}</h4>` : ""}
+      ${viewMode === "expert" ? renderEvidenceSearch(search, translation) : renderBasicEvidenceSearch(search, translation)}
+      <div class="evidence-list">${claim.evidence?.length ? claim.evidence.map(renderEvidence).join("") : `<div class="neutral-callout"><strong>No evidence passed the verification rules.</strong><p>Related records can still be useful context, but they do not establish this claim.</p></div>`}</div>
+    </section>
+  `;
+}
+
+function renderDisclaimer(data) {
+  const disclaimers = data.disclaimers || [];
+  if (!disclaimers.length) return "";
+  return `<div class="disclaimer-box"><strong>Important limitations</strong><ul>${disclaimers.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>`;
 }
 
 function renderTimeline(data) {
@@ -165,7 +455,11 @@ function renderTimeline(data) {
   const verdict = first?.verdict;
   const sourceCount = search?.source_consensus?.publisher_count ?? data.source_fetch?.live_record_count ?? 0;
   const sourceLabel = sourceCount ? `${sourceCount} trusted publisher${sourceCount === 1 ? "" : "s"} represented` : "No live publisher returned a usable record";
-  const submittedLabel = data.input?.input_type === "image" ? "Image received for local OCR" : "Claim received from the user";
+  const submittedLabel = data.input?.input_type === "image"
+    ? "Image received for local OCR"
+    : data.input?.input_type === "voice"
+      ? "Voice note received for local transcription"
+      : "Claim received from the user";
   const steps = [
     { label: "Submitted", detail: submittedLabel, status: "complete" },
     { label: "AI understood", detail: understanding?.interpretation || "Structured fields extracted from the submission.", status: understanding?.needs_clarification ? "attention" : "complete" },
@@ -202,9 +496,33 @@ function renderMedia(media, mode = "expert") {
       <div class="section-title-row"><span class="number-badge">M</span><div><p class="mini-label">Media inspection</p><h3 id="media-heading">OCR and provenance signals</h3></div></div>
       <div class="media-grid">
         <div><strong>OCR</strong><span>${escapeHtml(humanize(ocr.status))}${ocr.quality ? ` · ${escapeHtml(humanize(ocr.quality))} quality` : ""}</span><small>${escapeHtml(ocr.text || "No readable text found")}${ocr.confidence !== null && ocr.confidence !== undefined ? ` · ${ocr.confidence}% confidence` : ""}</small></div>
-        <div><strong>AI provenance signal</strong><span>${escapeHtml(provenance.status === "detected" ? "Supported signal detected" : "No supported signal detected")}</span><small>${escapeHtml(provenance.interpretation || "This is not an authenticity verdict.")}</small></div>
+        <div><strong>AI provenance signal</strong><span>${escapeHtml(provenance.status === "detected" ? "Supported signal detected" : provenance.status === "unavailable" ? "Inspection unavailable" : "No supported signal detected")}</span><small>${escapeHtml(provenance.interpretation || "This is not an authenticity verdict.")}</small></div>
       </div>
       <p class="media-note">A provenance signal can indicate origin, but it cannot prove that the claim is accurate. No signal does not prove the image is real or false. <a href="${escapeHtml(provenance.openai_verify_url)}" target="_blank" rel="noopener noreferrer">Check OpenAI Verify manually</a>.</p>
+    </section>
+  `;
+}
+
+function renderAudioResult(audioResult, mode = "expert") {
+  if (!audioResult) return "";
+  const transcript = audioResult.text || audioResult.reason || "No transcription was produced.";
+  if (mode !== "expert") {
+    return `
+      <section class="media-summary" aria-label="Voice transcription summary">
+        <span class="media-summary-icon">V</span>
+        <div><strong>Voice note checked locally</strong><p>${escapeHtml(humanize(audioResult.status))}. ${escapeHtml(transcript)}</p></div>
+        <span class="media-summary-link">Expert mode has details</span>
+      </section>
+    `;
+  }
+  return `
+    <section class="analysis-section media-analysis" aria-labelledby="voice-heading">
+      <div class="section-title-row"><span class="number-badge">V</span><div><p class="mini-label">Voice inspection</p><h3 id="voice-heading">Local transcription</h3></div></div>
+      <div class="media-grid">
+        <div><strong>Status</strong><span>${escapeHtml(humanize(audioResult.status))}</span><small>${escapeHtml(audioResult.engine || "Local adapter")}${audioResult.model ? ` · ${escapeHtml(audioResult.model)}` : ""}</small></div>
+        <div><strong>Transcript</strong><span>${escapeHtml(transcript)}</span><small>${audioResult.duration_seconds ? `${escapeHtml(String(audioResult.duration_seconds))} seconds` : "Review the original recording for names, locations, and numbers."}</small></div>
+      </div>
+      <p class="media-note">Transcription is an interpretation aid, not evidence. Review the original recording before acting.</p>
     </section>
   `;
 }
@@ -223,8 +541,8 @@ function renderRunOverview(data) {
   const aiStatus = `Local AI: ${semanticStatus}${structuredStatus}`;
   const sourceFetch = data.source_fetch;
   const liveStatus = sourceFetch.live_evidence_available
-    ? `${sourceFetch.live_record_count} current official records`
-    : "No live official records available";
+    ? `${sourceFetch.live_record_count} official records${sourceFetch.cache_fallback_record_count ? ` · ${sourceFetch.cache_fallback_record_count} from recent cache` : ""}`
+    : "No current or cached official records available";
 
   return `
     <section class="run-overview" aria-label="Analysis run overview">
@@ -495,8 +813,9 @@ function renderSourceFetch(sourceFetch) {
     <details class="source-status">
       <summary>Trusted-source refresh details</summary>
       ${statuses.map((status) => `
-        <p><span class="status-dot ${status.status === "ok" ? "ok" : "error"}"></span><strong>${escapeHtml(status.source_name)}</strong>: ${escapeHtml(status.status)}${status.record_count !== undefined ? ` · ${status.record_count} records` : ""}${status.error ? ` · ${escapeHtml(status.error)}` : ""}</p>
+        <p><span class="status-dot ${["ok", "cache_fallback"].includes(status.status) ? "ok" : "error"}"></span><strong>${escapeHtml(status.source_name)}</strong>: ${escapeHtml(humanize(status.status))}${status.record_count !== undefined ? ` · ${status.record_count} records` : ""}${status.cache_age_seconds !== undefined ? ` · cache age ${status.cache_age_seconds}s` : ""}${status.error ? ` · ${escapeHtml(status.error)}` : ""}</p>
       `).join("")}
+      <p><a class="source-history-link" href="${escapeHtml(`${apiBase}/sources/history`)}" target="_blank" rel="noopener noreferrer">Open source fetch history</a></p>
     </details>
   `;
 }
@@ -552,6 +871,15 @@ function readImage(file) {
     const reader = new FileReader();
     reader.onload = () => resolve({ data: reader.result, mime_type: file.type });
     reader.onerror = () => reject(new Error("Could not read the selected image"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function readAudio(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ data: reader.result, mime_type: file.type || "audio/wav", filename: file.name, size: file.size });
+    reader.onerror = () => reject(new Error("Could not read the selected voice note"));
     reader.readAsDataURL(file);
   });
 }

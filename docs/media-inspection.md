@@ -8,7 +8,7 @@ AEGIS accepts PNG, JPEG, and WebP uploads up to 8 MB. The API processes them loc
 
 ## Provenance
 
-`@contentauth/c2pa-node` checks for embedded C2PA Content Credentials. A detected manifest is a provenance signal, not proof that the accompanying crisis claim is accurate or correctly contextualized. No manifest is reported as `not_detected`, never as “real” or “fake”.
+`@contentauth/c2pa-node` checks for embedded C2PA Content Credentials. A detected manifest is a provenance signal, not proof that the accompanying crisis claim is accurate or correctly contextualized. No manifest is reported as `not_detected`; parser or dependency failures are reported separately as `unavailable`, never as “real” or “fake”.
 
 The UI links to [OpenAI Verify](https://openai.com/research/verify/) as a manual secondary check. OpenAI Verify checks OpenAI-origin signals such as C2PA and SynthID; it is not a documented general-purpose image-detector API and does not detect images made by every AI system.
 

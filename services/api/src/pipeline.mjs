@@ -5,6 +5,7 @@ import { retrieveEvidenceHybrid } from "./retrieval.mjs";
 import { fetchLiveEvidence } from "./trustedFetch.mjs";
 import { buildClaimUnderstanding, buildDecisionExplanation } from "./analysisInsights.mjs";
 import { inspectImage } from "./media.mjs";
+import { transcribeAudio } from "./voice.mjs";
 import { translateToEnglish } from "./translation.mjs";
 import { detectLanguage } from "./nlp.mjs";
 import { enrichClaimsWithLocalAI } from "./structuredExtractor.mjs";
@@ -20,7 +21,10 @@ export async function analyzeSubmission(input, options = {}) {
   const media = input.image?.data
     ? await inspectImage({ data: input.image.data, mime_type: input.image.mime_type, language: input.language })
     : null;
-  const submittedText = String(input.text ?? "").trim() || media?.ocr.text || "";
+  const audio = input.audio?.data
+    ? await transcribeAudio({ data: input.audio.data, mime_type: input.audio.mime_type, language: input.language }, { provider: options.transcriptionProvider })
+    : null;
+  const submittedText = String(input.text ?? "").trim() || media?.ocr.text || audio?.text || "";
   const translation = media?.translation ?? await translateToEnglish(submittedText, input.language || detectLanguage(submittedText));
   const extractedText = translation.status === "completed" ? translation.text : submittedText;
   const extractionOptions = {
@@ -99,17 +103,26 @@ export async function analyzeSubmission(input, options = {}) {
       normalized_text: extraction.normalized_text,
       language: extraction.language,
       location_override: input.location ?? null,
-      input_type: media ? "image" : "text"
+      input_type: media ? "image" : audio ? "voice" : "text"
     },
     media,
+    audio,
     translation,
     source_fetch: {
-      mode: useFixtures ? "fixture_test_mode" : "live_only",
+      mode: useFixtures
+        ? "fixture_test_mode"
+        : liveFetch.statuses.some((status) => status.status === "cache_fallback")
+          ? "live_with_cache_fallback"
+          : "live_only",
       enabled: liveFetch.enabled,
       statuses: liveFetch.statuses,
       live_record_count: liveFetch.records.length,
       fixture_record_count: fixtureRecords.length,
-      live_evidence_available: liveFetch.records.length > 0
+      live_evidence_available: liveFetch.records.length > 0,
+      cache_fallback_record_count: liveFetch.statuses
+        .filter((status) => status.status === "cache_fallback")
+        .reduce((total, status) => total + Number(status.record_count ?? 0), 0),
+      source_history_available: liveFetch.statuses.some((status) => status.cache_fetched_at || status.status === "ok")
     },
     model: {
       name: "aegis-local-ai-pipeline",
@@ -136,6 +149,8 @@ export async function analyzeSubmission(input, options = {}) {
       "This live-only mode does not use demo records. If the trusted source is unavailable, AEGIS returns not_established rather than substituting demo evidence.",
       "Missing provenance or unavailable evidence does not prove that media is false.",
       "OCR text is an aid to claim extraction. Review the original image when wording or context is important.",
+      "Voice transcription is local and may mishear names, places, or numbers. Review the original recording before acting.",
+      "Uploaded image and audio bytes are processed in memory for this analysis and are not retained by the API.",
       "Verdicts are limited to supported, contradicted, or not_established."
     ]
   };

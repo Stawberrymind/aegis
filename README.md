@@ -2,7 +2,7 @@
 
 > **AI Crisis-Claim Verification for India**
 
-AEGIS is a privacy-first, multilingual AI product for checking high-harm public-safety claims. It accepts typed claims and images: open-source Tesseract.js OCR extracts text locally, then the same evidence pipeline checks it. Voice transcription remains a planned adapter. It does not try to be a universal "truth machine". It turns a message into specific claims, searches an approved evidence collection, and reports whether each claim is **supported**, **contradicted**, or **not established**.
+AEGIS is a privacy-first, multilingual AI product for checking high-harm public-safety claims. It accepts typed claims, images, and PCM WAV voice notes: open-source Tesseract.js OCR and an optional local Whisper adapter extract text locally, then the same evidence pipeline checks it. It does not try to be a universal "truth machine". It turns a message into specific claims, searches an approved evidence collection, and reports whether each claim is **supported**, **contradicted**, or **not established**.
 
 The project is framed as **civil defence and national resilience**: helping citizens, volunteers, and community organisations resist harmful misinformation, impersonation, and panic during emergencies or sensitive events.
 
@@ -16,7 +16,7 @@ The problem is current and concrete. Government guidance identifies misinformati
 
 Given a user submission, AEGIS will:
 
-1. Accept typed text or an uploaded PNG, JPEG, or WebP image in a supported language. Image OCR is local; voice-note transcription remains planned.
+1. Accept typed text, an uploaded PNG/JPEG/WebP image, or a PCM WAV voice note in a supported language. OCR and voice transcription are local adapters.
 2. Extract the actionable claims: **who**, **what**, **where**, **when**, and **what action is proposed**.
 3. Retrieve relevant material from a curated, versioned collection of official sources and checked records.
 4. Compare the claim with the retrieved evidence.
@@ -30,7 +30,7 @@ AEGIS must never:
 
 - claim that it can conclusively detect every deepfake or prove a media item is false;
 - issue public emergency instructions or replace NDMA, 112, PIB, law enforcement, or platform moderation;
-- ingest social-media feeds, scrape private groups, identify people, profile communities, or score political viewpoints;
+- scrape social-media pages or private groups, identify people, profile communities, or score political viewpoints. An optional official API connector may read configured public posts as candidate context, never as sole proof;
 - label an individual, organisation, or account as malicious;
 - retain uploaded media by default or expose user submissions to other users.
 
@@ -41,8 +41,8 @@ For media, AEGIS inspects available [C2PA Content Credentials](https://contentcr
 The first working release is intentionally narrow and credible:
 
 - **Languages:** English and Hindi, with an architecture that can add more Indian languages.
-- **Inputs:** typed text or PNG/JPEG/WebP image with local OCR. Voice-note transcription remains planned.
-- **Evidence base:** controlled live fetching from the allowlisted NDMA SACHET CAP/RSS source. No open-web or user-supplied URL scraping. Versioned fixtures exist only for deterministic automated tests and are not loaded by normal runtime.
+- **Inputs:** typed text, PNG/JPEG/WebP image with local OCR, or PCM WAV voice note with local Whisper transcription.
+- **Evidence base:** controlled live fetching from allowlisted NDMA SACHET, IMD, and optional PIB/state public advisory sources. No open-web or user-supplied URL scraping. Versioned fixtures exist only for deterministic automated tests and are not loaded by normal runtime.
 - **Verdicts:** supported, contradicted, not established.
 - **Use cases:** false emergency/evacuation instructions, impersonated public-authority messages, and altered-media claims.
 - **Interface:** accessible, mobile-first, text-first, low-bandwidth friendly, and clear enough for a non-technical user.
@@ -63,14 +63,14 @@ Text / image / voice note
   Calibrated verdict + citations + safe action
 ```
 
-The current working stack is a static browser client, a Node HTTP service, an allowlisted live-source fetcher, and a pluggable retrieval layer. A React/TypeScript and FastAPI migration remains an architectural option. See [HANDOVER.md](HANDOVER.md) for the implementation contract.
+The current working stack is a static browser client, a Node HTTP service, an allowlisted live-source fetcher with bounded cache fallback, and a pluggable retrieval layer. A React/TypeScript and FastAPI migration remains an architectural option. See [HANDOVER.md](HANDOVER.md) for the implementation contract.
 
 ## Responsible AI controls
 
 - Evidence-first responses: every factual verdict links to the evidence used.
 - Fixed verdict vocabulary: no free-form "fake" accusations.
 - Human-readable uncertainty and confidence explanations.
-- Private-by-default processing and deletion controls.
+- Private-by-default processing and deletion controls; uploaded image/audio bytes are processed in memory and not retained by the API.
 - No identity, demographic, or political inference.
 - Test cases for Hindi and English, contradictory evidence, missing evidence, OCR failure, and unsafe prompt-style inputs.
 - A visible disclaimer directing imminent emergencies to official channels such as [112](https://112.gov.in/).
@@ -97,7 +97,7 @@ Start the local app:
 npm run api
 ```
 
-Open `http://localhost:8787` in a browser and submit a real current claim. The same Node process serves both the API and the static web UI. If NDMA SACHET is unreachable, AEGIS returns `not_established`; it does not fall back to demo records.
+Open `http://localhost:8787` in a browser and submit a real current claim. The same Node process serves both the API and the static web UI. The API binds to `127.0.0.1` by default and accepts same-origin requests; set `AEGIS_API_HOST` and explicit `AEGIS_ALLOWED_ORIGINS` only for an intentional separate deployment. If one source is unreachable, AEGIS may use a bounded, labelled `live_cache` record; it does not fall back to demo records.
 
 The first analysis with local AI embeddings enabled may download the local model `Xenova/paraphrase-multilingual-MiniLM-L12-v2`. After that, cached model files are reused by Transformers.js.
 
@@ -111,9 +111,11 @@ Run tests:
 
 ```bash
 npm test
+npm run test:web
+npm run test:all
 ```
 
-The test command runs the API pipeline regressions and the extraction evaluation matrix in `tests/api/evaluation.test.mjs`.
+The API test command runs pipeline, hardening, and extraction evaluation tests. `npm run test:web` runs the Playwright browser suite; `npm run test:all` runs both.
 
 ## Implemented AI pipeline
 
@@ -123,7 +125,9 @@ The test command runs the API pipeline regressions and the extraction evaluation
 - Expanded hazard taxonomy for weather, earthquake, landslide, wildfire, heatwave, tsunami, and health-outbreak alerts.
 - Deterministic structured claim extraction with multiple-claim splitting.
 - Optional schema-constrained local structured extraction using `Xenova/flan-t5-small`; it only fills missing fields and never produces a verdict.
-- Live trusted-source fetching from the configured NDMA SACHET CAP/RSS allowlist.
+- Live trusted-source fetching from the configured NDMA SACHET and IMD CAP/RSS allowlist, with bounded cache fallback when a source is temporarily unavailable.
+- Opt-in PIB Fact Check and state disaster-management public-page adapters that require dated, parseable content; no login/CAPTCHA bypass.
+- Optional official X API v2 adapter for configured handles. Scraping is disabled and a bearer token is required.
 - Local multilingual embedding retrieval using `@huggingface/transformers`.
 - Hybrid evidence retrieval using embedding similarity plus lexical/predicate/location boosts.
 - Publisher-diversified candidate retrieval with fresh-source agreement/conflict analysis; conflicting fresh trusted sources remain `not_established`.
@@ -134,7 +138,8 @@ The test command runs the API pipeline regressions and the extraction evaluation
 - Structured CAP metadata preservation for event, area, severity, urgency, certainty, effective time, expiry, and official instructions when the feed supplies those fields.
 - Evidence-linked verdicts only: `supported`, `contradicted`, `not_established`.
 - Trusted-source fetch allowlist guard for future real-time official-source ingestion.
-- Multilingual OCR selection with automatic English+Hindi fallback, OCR confidence/quality metadata, and local translation across supported Indian languages.
+- Multilingual OCR selection with automatic English+Hindi fallback, a low-confidence fallback pass, OCR confidence/quality metadata, and chunked local translation across supported Indian languages.
+- Local PCM WAV voice transcription through a cached Transformers.js Whisper adapter with graceful unsupported/unavailable states.
 
 To enable the optional structured model on Windows PowerShell, set `$env:AEGIS_ENABLE_LOCAL_STRUCTURED_AI="true"` before `npm run api`. The model may download on first use and is cached under `data/structured-ai-cache/`; leave it disabled for the fast deterministic path.
 
@@ -143,7 +148,10 @@ Useful endpoints:
 - `POST /analyze`
 - `GET /health`
 - `GET /sources/status`
+- `GET /sources/history`
+- `GET /sources/catalog`
 - `GET /sources/social`
+- `GET /sources/social/status`
 - `POST /sources/refresh`
 - `GET /models/status`
 

@@ -49,16 +49,24 @@ export async function translateToEnglish(text, language = null) {
       translators.set(model, translatorPromise);
     }
     const translator = await translatorPromise;
-    const output = await translator(originalText.slice(0, 4000), { max_new_tokens: 512 });
-    const translated = Array.isArray(output)
-      ? output.map((item) => item.translation_text).filter(Boolean).join(" ")
-      : "";
+    const chunks = splitTranslationChunks(originalText, 1200);
+    const translatedChunks = [];
+    for (const chunk of chunks) {
+      const output = await translator(chunk, { max_new_tokens: 256 });
+      const translatedChunk = Array.isArray(output)
+        ? output.map((item) => item.translation_text).filter(Boolean).join(" ")
+        : "";
+      if (translatedChunk) translatedChunks.push(translatedChunk.trim());
+    }
+    const translated = translatedChunks.join(" ").replace(/\s+/g, " ").trim();
     return {
       status: translated ? "completed" : "unavailable",
       source_language: detectedLanguage,
       text: translated || originalText,
       original_text: originalText,
-      model
+      model,
+      quality: translated ? "local_model_chunked" : "unavailable",
+      chunks: chunks.length
     };
   } catch (error) {
     translators.delete(model);
@@ -68,9 +76,25 @@ export async function translateToEnglish(text, language = null) {
       text: originalText,
       original_text: originalText,
       model,
+      quality: "fallback_original_text",
       reason: error.message
     };
   }
+}
+
+function splitTranslationChunks(text, maxCharacters) {
+  const sentences = text.split(/(?<=[.!?।॥])\s+/).filter(Boolean);
+  const chunks = [];
+  let current = "";
+  for (const sentence of sentences.length ? sentences : [text]) {
+    if (current && current.length + sentence.length + 1 > maxCharacters) {
+      chunks.push(current);
+      current = "";
+    }
+    current = current ? `${current} ${sentence}` : sentence;
+  }
+  if (current) chunks.push(current);
+  return chunks.length ? chunks : [text.slice(0, maxCharacters)];
 }
 
 function hasExpectedScript(text, language) {

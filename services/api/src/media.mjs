@@ -1,10 +1,13 @@
 import { createWorker } from "tesseract.js";
 import { detectLanguage } from "./nlp.mjs";
 import { translateToEnglish } from "./translation.mjs";
+import { publicError } from "./httpRequest.mjs";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const OPENAI_VERIFY_URL = "https://openai.com/research/verify/";
 const workers = new Map();
+const workerPromises = new Map();
+const MAX_OCR_WORKERS = 4;
 const OCR_LANGUAGES = {
   en: "eng",
   hi: "hin",
@@ -38,13 +41,13 @@ export async function inspectImage({ data, mime_type, language = "en" }) {
 
 function decodeImageData(data, mimeType) {
   if (!/^image\/(png|jpeg|webp)$/i.test(String(mimeType ?? ""))) {
-    throw new Error("Only PNG, JPEG, and WebP images are supported");
+    throw publicError(400, "invalid_media", "Only PNG, JPEG, and WebP images are supported");
   }
   const encoded = String(data ?? "").replace(/^data:image\/(?:png|jpeg|webp);base64,/i, "");
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) || !encoded) throw new Error("Invalid image data");
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) || !encoded) throw publicError(400, "invalid_media", "Invalid image data");
   const buffer = Buffer.from(encoded, "base64");
-  if (!buffer.length || buffer.length > MAX_IMAGE_BYTES) throw new Error("Image must be smaller than 8 MB");
-  if (!hasImageSignature(buffer, mimeType)) throw new Error("Image content does not match its declared type");
+  if (!buffer.length || buffer.length > MAX_IMAGE_BYTES) throw publicError(400, "invalid_media", "Image must be smaller than 8 MB");
+  if (!hasImageSignature(buffer, mimeType)) throw publicError(400, "invalid_media", "Image content does not match its declared type");
   return buffer;
 }
 
@@ -56,17 +59,46 @@ function hasImageSignature(buffer, mimeType) {
 }
 
 async function runOcr(buffer, mimeType, language) {
-  const lang = OCR_LANGUAGES[language] ?? "eng+hin";
   const started = Date.now();
   const timeoutMs = Number(process.env.AEGIS_OCR_TIMEOUT_MS ?? 90_000);
-  let worker;
   try {
-    worker = workers.get(lang);
-    if (!worker) {
-      worker = await withTimeout(createWorker(lang), timeoutMs, "OCR initialization");
-      workers.set(lang, worker);
-    }
-    const recognition = await withTimeout(worker.recognize(buffer, { mimeType }), timeoutMs, "OCR");
+    const requestedLang = OCR_LANGUAGES[language] ?? "eng+hin";
+    const primary = await recognizeOcr(buffer, mimeType, requestedLang, timeoutMs);
+    const shouldTryBilingualFallback = Boolean(language && !["en", "hi"].includes(language)) &&
+      (primary.status === "no_text_found" || (primary.confidence !== null && primary.confidence < 35));
+    if (!shouldTryBilingualFallback) return { ...primary, requested_language: language || "auto", duration_ms: Date.now() - started };
+
+    const fallback = await recognizeOcr(buffer, mimeType, "eng+hin", timeoutMs);
+    const chosen = ocrScore(fallback) > ocrScore(primary) ? fallback : primary;
+    return {
+      ...chosen,
+      requested_language: language,
+      fallback_attempted: true,
+      fallback_language: "eng+hin",
+      duration_ms: Date.now() - started
+    };
+  } catch (error) {
+    return {
+      status: "unavailable",
+      text: "",
+      language: OCR_LANGUAGES[language] ?? "eng+hin",
+      requested_language: language || "auto",
+      engine: "tesseract.js",
+      confidence: null,
+      quality: "unavailable",
+      error: error.message,
+      duration_ms: Date.now() - started
+    };
+  }
+}
+
+async function recognizeOcr(buffer, mimeType, lang, timeoutMs) {
+  let entry;
+  try {
+    entry = await getOcrWorker(lang, timeoutMs);
+    entry.inUse += 1;
+    entry.lastUsedAt = Date.now();
+    const recognition = await withTimeout(entry.worker.recognize(buffer, { mimeType }), timeoutMs, "OCR");
     const text = String(recognition.data?.text ?? "").trim();
     const confidence = Number.isFinite(recognition.data?.confidence)
       ? Number(recognition.data.confidence.toFixed(1))
@@ -80,25 +112,55 @@ async function runOcr(buffer, mimeType, language) {
       confidence,
       quality: ocrQuality(confidence, text),
       word_count: text ? text.split(/\s+/).filter(Boolean).length : 0,
-      line_count: Array.isArray(recognition.data?.lines) ? recognition.data.lines.length : null,
-      duration_ms: Date.now() - started
+      line_count: Array.isArray(recognition.data?.lines) ? recognition.data.lines.length : null
     };
   } catch (error) {
-    if (worker && error.message.includes("timed out")) {
-      await worker.terminate().catch(() => {});
+    if (entry && error.message.includes("timed out")) {
+      await entry.worker.terminate().catch(() => {});
       workers.delete(lang);
     }
-    return {
-      status: "unavailable",
-      text: "",
-      language: lang,
-      engine: "tesseract.js",
-      confidence: null,
-      quality: "unavailable",
-      error: error.message,
-      duration_ms: Date.now() - started
-    };
+    throw error;
+  } finally {
+    if (entry) entry.inUse = Math.max(0, entry.inUse - 1);
   }
+}
+
+async function getOcrWorker(lang, timeoutMs) {
+  const existing = workers.get(lang);
+  if (existing) return existing;
+
+  const pending = workerPromises.get(lang);
+  if (pending) return pending;
+
+  await evictIdleOcrWorker();
+  const initialization = withTimeout(createWorker(lang), timeoutMs, "OCR initialization")
+    .then((worker) => {
+      const entry = { worker, inUse: 0, lastUsedAt: Date.now() };
+      workers.set(lang, entry);
+      return entry;
+    })
+    .finally(() => workerPromises.delete(lang));
+  workerPromises.set(lang, initialization);
+  return initialization;
+}
+
+async function evictIdleOcrWorker() {
+  if (workers.size + workerPromises.size < MAX_OCR_WORKERS) return;
+  const idle = [...workers.entries()]
+    .filter(([, entry]) => entry.inUse === 0)
+    .sort((left, right) => left[1].lastUsedAt - right[1].lastUsedAt)[0];
+  if (!idle) return;
+  workers.delete(idle[0]);
+  if (typeof idle[1].worker.terminate === "function") await idle[1].worker.terminate().catch(() => {});
+}
+
+export function getOcrWorkerStats() {
+  return { active_workers: workers.size, initializing_workers: workerPromises.size, max_workers: MAX_OCR_WORKERS };
+}
+
+function ocrScore(result) {
+  if (!result || result.status !== "completed") return 0;
+  return (result.confidence ?? 0) + Math.min(20, result.word_count ?? 0);
 }
 
 function ocrQuality(confidence, text) {
@@ -129,6 +191,7 @@ async function inspectC2pa(buffer, mimeType) {
     const reader = await Reader.fromAsset({ buffer, mimeType }, { verify: { verify_after_reading: true } });
     if (!reader) return unavailable("No embedded C2PA manifest found");
     const manifest = reader.getActive();
+    if (!manifest) return noManifest("No active C2PA manifest found");
     const assertions = manifest?.assertions ?? [];
     const issuer = manifest?.claim_generator ?? manifest?.claim_generator_info?.[0]?.name ?? null;
     return {
@@ -145,6 +208,10 @@ async function inspectC2pa(buffer, mimeType) {
 }
 
 function unavailable(reason) {
+  return { status: "unavailable", signal: null, embedded: false, verified: false, reason };
+}
+
+function noManifest(reason) {
   return { status: "not_detected", signal: null, embedded: false, verified: false, reason };
 }
 

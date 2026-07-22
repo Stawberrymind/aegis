@@ -19,6 +19,7 @@ export function compareClaimToEvidence(claim, candidates, options = {}) {
   });
 
   const freshRelevant = directlyRelevant.filter((candidate) => !candidate.staleness.is_stale);
+  const authoritativeFreshRelevant = freshRelevant.filter((candidate) => candidate.record.source_type !== "official_social_api");
   const sourceConsensus = summarizeSourceConsensus(freshRelevant);
   evidenceAnalysis.source_consensus = sourceConsensus;
 
@@ -33,6 +34,10 @@ export function compareClaimToEvidence(claim, candidates, options = {}) {
 
   if (freshRelevant.length === 0) {
     return notEstablished(claim, directlyRelevant, "No fresh trusted evidence directly matched the extracted claim.", evidenceAnalysis);
+  }
+
+  if (authoritativeFreshRelevant.length === 0) {
+    return notEstablished(claim, freshRelevant, "An official social post was relevant, but social evidence alone cannot establish this claim.", evidenceAnalysis);
   }
 
   const unknown = freshRelevant.find((candidate) => candidate.matched_assertion.polarity === "unknown");

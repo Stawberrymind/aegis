@@ -17,6 +17,13 @@
 
       <div id="top" class="page-rule" aria-hidden="true"></div>
 
+      <nav id="wizard-stepper" class="wizard-stepper" aria-label="Verification progress">
+        <button type="button" data-wizard-target="1" aria-current="step"><span>01</span><strong>Add claim</strong><small>Message, image, or voice</small></button>
+        <button type="button" data-wizard-target="2"><span>02</span><strong>Set context</strong><small>Language and location</small></button>
+        <button type="button" data-wizard-target="3"><span>03</span><strong>Check</strong><small>AI and official sources</small></button>
+        <button type="button" data-wizard-target="4"><span>04</span><strong>Review</strong><small>Answer and evidence</small></button>
+      </nav>
+
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow">AI evidence layer for crisis claims</p>
@@ -64,6 +71,13 @@
           <input id="claim-image" type="file" accept="image/png,image/jpeg,image/webp" />
           <p>OCR runs locally with open-source Tesseract.js. Images are processed by your local AEGIS service and are not sent to OpenAI.</p>
           <div id="image-preview" class="image-preview" hidden></div>
+        </div>
+
+        <div class="media-upload voice-upload">
+          <label for="claim-audio">Or upload a voice note</label>
+          <input id="claim-audio" type="file" accept="audio/wav,audio/x-wav,audio/wave" />
+          <p>Local Whisper transcription currently accepts PCM WAV files. Audio is processed in memory and is not retained.</p>
+          <div id="audio-preview" class="audio-preview" hidden></div>
         </div>
 
         <div class="form-grid">
@@ -139,16 +153,31 @@
             </select>
             <small class="field-help">Use this to scope a vague message to a specific place.</small>
           </div>
-          <button id="analyze" type="button">Analyze claim</button>
+          <button id="analyze" type="button">Check this claim</button>
         </div>
 
         <p class="live-only-note">AEGIS checks live allowlisted official sources only. It does not use demo alerts in this mode.</p>
       </section>
 
-      <section class="card result-card" aria-live="polite" aria-busy="false" aria-labelledby="result-heading">
+      <section id="analysis-progress" class="analysis-progress" hidden aria-live="polite" aria-labelledby="progress-heading">
+        <div class="progress-orbit" aria-hidden="true"><span></span></div>
+        <div>
+          <p class="step-label">Step 3 · Checking</p>
+          <h2 id="progress-heading">AEGIS is working through the claim.</h2>
+          <p>It is reading the submission, refreshing allowlisted sources, and applying the evidence rules.</p>
+          <ol class="progress-list">
+            <li data-progress-stage="understand">Understand the claim</li>
+            <li data-progress-stage="media">Read or translate media</li>
+            <li data-progress-stage="sources">Refresh official sources</li>
+            <li data-progress-stage="compare">Compare and explain</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="card result-card is-hidden" aria-live="polite" aria-busy="false" aria-labelledby="result-heading">
         <div class="section-heading">
           <div>
-            <p class="step-label">Step 2</p>
+            <p class="step-label">Step 4 · Review</p>
             <h2 id="result-heading">AI evidence analysis</h2>
           </div>
           <div class="view-mode-control">
@@ -160,6 +189,13 @@
             <small id="view-mode-help">Essential answer and next action.</small>
           </div>
         </div>
+        <nav id="result-tabs" class="result-tabs" aria-label="Analysis sections" role="tablist">
+          <button id="result-tab-answer" type="button" role="tab" aria-selected="true" data-result-tab="answer">Answer</button>
+          <button id="result-tab-understanding" type="button" role="tab" aria-selected="false" data-result-tab="understanding">Understanding</button>
+          <button id="result-tab-evidence" type="button" role="tab" aria-selected="false" data-result-tab="evidence">Evidence</button>
+          <button id="result-tab-timeline" type="button" role="tab" aria-selected="false" data-result-tab="timeline">Timeline</button>
+          <button id="result-tab-technical" type="button" role="tab" aria-selected="false" data-result-tab="technical" data-expert-only>Technical</button>
+        </nav>
         <div id="result" class="empty-state">
           <p class="empty-icon" aria-hidden="true">◎</p>
           <p><strong>Ready to investigate.</strong></p>

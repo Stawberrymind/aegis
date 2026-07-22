@@ -1,6 +1,7 @@
 import {
   cosineSimilarity,
   embedText,
+  embedMany,
   embeddingInputForClaim,
   embeddingInputForEvidence,
   getEmbeddingStatus,
@@ -30,10 +31,11 @@ export async function retrieveEvidenceHybrid(claim, records, options = {}) {
 
   try {
     const claimVector = await embedText(embeddingInputForClaim(claim), options);
+    const evidenceVectors = await embedMany(records.map((record) => embeddingInputForEvidence(record)), options);
     const scored = [];
-    for (const record of records) {
+    for (const [index, record] of records.entries()) {
       const lexicalCandidate = scoreRecordLexically(claim, record);
-      const evidenceVector = await embedText(embeddingInputForEvidence(record), options);
+      const evidenceVector = evidenceVectors[index];
       const embeddingScore = cosineSimilarity(claimVector, evidenceVector);
       const finalScore = (
         embeddingScore * 0.72 +

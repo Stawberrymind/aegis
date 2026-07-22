@@ -28,5 +28,41 @@
     "parser": "imd-nowcast-rss",
     "cache_ttl_seconds": 300,
     "notes": "Public IMD district nowcast feed documented by IMD. Parsed as candidate weather evidence and subject to freshness/location rules."
+  },
+  {
+    "id": "pib-fact-check-public-portal",
+    "name": "PIB Fact Check public portal",
+    "base_url": "https://factcheck.pib.gov.in/",
+    "allowed_hosts": ["factcheck.pib.gov.in"],
+    "enabled": true,
+    "optional": true,
+    "parser": "pib-fact-check-html",
+    "cache_ttl_seconds": 900,
+    "cache_fallback_ttl_seconds": 21600,
+    "notes": "Official PIB Fact Check portal. The public landing page may require login or CAPTCHA; AEGIS only accepts dated, parsed public advisory text and never automates a user submission or bypasses access controls."
+  },
+  {
+    "id": "goa-sdma-public-advisories",
+    "name": "Goa State Disaster Management Authority public advisories",
+    "base_url": "https://www.sdma.goa.gov.in/",
+    "allowed_hosts": ["www.sdma.goa.gov.in"],
+    "enabled": true,
+    "optional": true,
+    "parser": "state-advisory-html-v1",
+    "cache_ttl_seconds": 900,
+    "cache_fallback_ttl_seconds": 21600,
+    "notes": "Initial state-source adapter for the official Goa SDMA public site. It is opt-in because page structure and publication dates can change."
+  },
+  {
+    "id": "meghalaya-sdma-public-advisories",
+    "name": "Meghalaya State Disaster Management Authority public advisories",
+    "base_url": "https://msdma.gov.in/",
+    "allowed_hosts": ["msdma.gov.in"],
+    "enabled": true,
+    "optional": true,
+    "parser": "state-advisory-html-v1",
+    "cache_ttl_seconds": 900,
+    "cache_fallback_ttl_seconds": 21600,
+    "notes": "Initial state-source adapter for the official Meghalaya SDMA public site. It is opt-in because page structure and publication dates can change."
   }
 ]
