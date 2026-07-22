@@ -116,3 +116,12 @@
 ## [OUTCOMES]
 
 - 2026-07-22T23:35:00+05:30 [TOOL] Full API validation passes 49/49 and Playwright Chromium validation passes 3/3 after the redesign.
+
+## [PROGRESS]
+
+- 2026-07-23T00:05:00+05:30 [USER] Requested a proper GitHub-facing README instead of deployment instructions for the current competition stage.
+- 2026-07-23T00:05:00+05:30 [CODE] Rewrote README.md with the real product scope, AI layers, live-source policy, verdict contract, local setup, configuration, API endpoints, test commands, competition demo flow, safety boundaries, repository layout, documentation links, and known limitations.
+
+## [OUTCOMES]
+
+- 2026-07-23T00:05:00+05:30 [TOOL] README diff check and ASCII rendering check pass; no runtime code was changed for the documentation rewrite.
