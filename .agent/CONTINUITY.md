@@ -125,3 +125,12 @@
 ## [OUTCOMES]
 
 - 2026-07-23T00:05:00+05:30 [TOOL] README diff check and ASCII rendering check pass; no runtime code was changed for the documentation rewrite.
+
+## [PROGRESS]
+
+- 2026-07-23T00:20:00+05:30 [USER] Requested colorful GitHub README status badges similar to a reference project.
+- 2026-07-23T00:20:00+05:30 [CODE] Added truthful shields.io badges for Node.js, local AI, live allowlisted sources, Tesseract.js OCR, current API/browser test counts, competition-prototype status, and the GitHub repository. Deliberately omitted deployment and license badges that are not yet true or declared.
+
+## [OUTCOMES]
+
+- 2026-07-23T00:20:00+05:30 [TOOL] README diff check remains clean; no application behavior changed.
