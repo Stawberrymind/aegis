@@ -3,51 +3,179 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="AEGIS checks crisis claims against trusted evidence using local multilingual AI." />
+    <link rel="icon" href="data:," />
     <title>AEGIS Crisis-Claim Verification</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="shell">
+      <header class="site-header">
+        <a class="wordmark" href="#top" aria-label="AEGIS home"><span class="wordmark-mark" aria-hidden="true"></span><span>AEGIS</span></a>
+        <div class="header-context"><span>AI evidence layer</span><span class="header-rule" aria-hidden="true"></span><span>Public-interest verification</span></div>
+      </header>
+
+      <div id="top" class="page-rule" aria-hidden="true"></div>
+
       <section class="hero">
-        <p class="eyebrow">AI evidence layer for crisis claims</p>
-        <h1>Check a forwarded public-safety claim before treating it as fact.</h1>
-        <p>
-          AEGIS extracts the material claim, compares it with trusted evidence, and returns only
-          <code>supported</code>, <code>contradicted</code>, or <code>not_established</code>.
-        </p>
-      </section>
-
-      <section class="card" aria-labelledby="submit-heading">
-        <h2 id="submit-heading">Submit text</h2>
-        <label for="claim-text">Message or claim</label>
-        <textarea id="claim-text" rows="6">Urgent: District officials ordered everyone in Sector 4 to evacuate tonight before 9 PM.</textarea>
-        <div class="row">
-          <label for="language">Language</label>
-          <select id="language">
-            <option value="">Auto detect</option>
-            <option value="en">English</option>
-            <option value="hi">Hindi</option>
-          </select>
-          <label for="location">Location scope</label>
-          <select id="location">
-            <option value="">Auto / claim text</option>
-            <option value="India">Overall India</option>
-            <option value="Hyderabad">Hyderabad / HYD</option>
-            <option value="Bengaluru">Bengaluru / BLR</option>
-            <option value="Delhi">Delhi</option>
-            <option value="Mumbai">Mumbai</option>
-            <option value="Chennai">Chennai</option>
-            <option value="Kolkata">Kolkata</option>
-          </select>
-          <button id="analyze">Analyze claim</button>
+        <div class="hero-copy">
+          <p class="eyebrow">AI evidence layer for crisis claims</p>
+          <h1>Check before a crisis claim becomes a fact.</h1>
+          <p class="lede">
+            AEGIS understands the claim, checks configured trusted evidence, and shows exactly why
+            the available evidence supports, contradicts, or cannot establish it.
+          </p>
         </div>
-        <div id="demo-scenarios" class="demo-scenarios" aria-label="Demo scenarios"></div>
-        <p class="privacy">Local demo: text is sent only to the local AEGIS API you run.</p>
+        <aside class="hero-aside" aria-label="How AEGIS checks a claim">
+          <p class="aside-kicker">The check in three moves</p>
+          <div class="hero-step"><span>01</span><div><strong>Understand</strong><small>Typos, languages, location, and time.</small></div></div>
+          <div class="hero-step"><span>02</span><div><strong>Compare</strong><small>Fresh records from trusted publishers.</small></div></div>
+          <div class="hero-step"><span>03</span><div><strong>Explain</strong><small>Evidence, limits, and a safe next step.</small></div></div>
+          <div class="hero-live"><span class="live-dot" aria-hidden="true"></span>Live allowlisted evidence</div>
+        </aside>
+        <div class="trust-strip" aria-label="Product safeguards">
+          <span>Local multilingual AI</span>
+          <span>Evidence-linked verdicts</span>
+          <span>No paid API key</span>
+        </div>
       </section>
 
-      <section class="card" aria-live="polite" aria-labelledby="result-heading">
-        <h2 id="result-heading">Result</h2>
-        <div id="result">Start the app with <code>npm run api</code>, open <code>http://localhost:8787</code>, then click Analyze.</div>
+      <section class="card submit-card" aria-labelledby="submit-heading">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">Step 1</p>
+            <h2 id="submit-heading">What claim should AEGIS check?</h2>
+          </div>
+          <p class="privacy">Your text stays on the local AEGIS service you run.</p>
+        </div>
+
+        <label for="claim-text">Forwarded message or public-safety claim</label>
+        <textarea id="claim-text" rows="6" placeholder="Example: Is there a flood alert in Hyderabad today?"></textarea>
+        <div class="composer-tools"><span id="char-count">0 characters</span><button id="clear-claim" class="clear-button" type="button">Clear</button></div>
+        <div class="example-strip" aria-label="Example claims">
+          <span>Try an example</span>
+          <button type="button" data-example="Is there a rain alert in Diu today?" data-example-location="Diu">Rain alert</button>
+          <button type="button" data-example="Is there an evacuation order in Assam tonight?" data-example-location="Assam">Evacuation</button>
+          <button type="button" data-example="Is there an earthquake warning in Uttarakhand?" data-example-location="Uttarakhand">Earthquake</button>
+        </div>
+
+        <div class="media-upload">
+          <label for="claim-image">Or upload an image containing the claim</label>
+          <input id="claim-image" type="file" accept="image/png,image/jpeg,image/webp" />
+          <p>OCR runs locally with open-source Tesseract.js. Images are processed by your local AEGIS service and are not sent to OpenAI.</p>
+          <div id="image-preview" class="image-preview" hidden></div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="language">Language</label>
+            <select id="language">
+              <option value="">Auto detect</option>
+              <option value="en">English</option>
+              <option value="hi">Hindi</option>
+              <option value="bn">Bengali</option>
+              <option value="gu">Gujarati</option>
+              <option value="mr">Marathi</option>
+              <option value="ta">Tamil</option>
+              <option value="te">Telugu</option>
+              <option value="kn">Kannada</option>
+              <option value="ml">Malayalam</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="location">Location to check</label>
+            <select id="location">
+              <option value="">Use location in the claim</option>
+              <option value="India">Overall India</option>
+              <optgroup label="States">
+                <option value="Andhra Pradesh">Andhra Pradesh</option>
+                <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                <option value="Assam">Assam</option>
+                <option value="Bihar">Bihar</option>
+                <option value="Chhattisgarh">Chhattisgarh</option>
+                <option value="Goa">Goa</option>
+                <option value="Gujarat">Gujarat</option>
+                <option value="Haryana">Haryana</option>
+                <option value="Himachal Pradesh">Himachal Pradesh</option>
+                <option value="Jharkhand">Jharkhand</option>
+                <option value="Karnataka">Karnataka</option>
+                <option value="Kerala">Kerala</option>
+                <option value="Madhya Pradesh">Madhya Pradesh</option>
+                <option value="Maharashtra">Maharashtra</option>
+                <option value="Manipur">Manipur</option>
+                <option value="Meghalaya">Meghalaya</option>
+                <option value="Mizoram">Mizoram</option>
+                <option value="Nagaland">Nagaland</option>
+                <option value="Odisha">Odisha</option>
+                <option value="Punjab">Punjab</option>
+                <option value="Rajasthan">Rajasthan</option>
+                <option value="Sikkim">Sikkim</option>
+                <option value="Tamil Nadu">Tamil Nadu</option>
+                <option value="Telangana">Telangana</option>
+                <option value="Tripura">Tripura</option>
+                <option value="Uttar Pradesh">Uttar Pradesh</option>
+                <option value="Uttarakhand">Uttarakhand</option>
+                <option value="West Bengal">West Bengal</option>
+              </optgroup>
+              <optgroup label="Union territories">
+                <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                <option value="Chandigarh">Chandigarh</option>
+                <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                <option value="Delhi">Delhi</option>
+                <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                <option value="Ladakh">Ladakh</option>
+                <option value="Lakshadweep">Lakshadweep</option>
+                <option value="Puducherry">Puducherry</option>
+              </optgroup>
+              <optgroup label="Major cities and localities">
+                <option value="Hyderabad">Hyderabad / HYD</option>
+                <option value="Bengaluru">Bengaluru / BLR</option>
+                <option value="Delhi">Delhi</option>
+                <option value="Mumbai">Mumbai</option>
+                <option value="Chennai">Chennai</option>
+                <option value="Kolkata">Kolkata</option>
+                <option value="Diu">Diu</option>
+              </optgroup>
+            </select>
+            <small class="field-help">Use this to scope a vague message to a specific place.</small>
+          </div>
+          <button id="analyze" type="button">Analyze claim</button>
+        </div>
+
+        <p class="live-only-note">AEGIS checks live allowlisted official sources only. It does not use demo alerts in this mode.</p>
+      </section>
+
+      <section class="card result-card" aria-live="polite" aria-busy="false" aria-labelledby="result-heading">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">Step 2</p>
+            <h2 id="result-heading">AI evidence analysis</h2>
+          </div>
+          <div class="view-mode-control">
+            <span>View mode</span>
+            <div class="view-mode-switch" role="group" aria-label="Choose analysis detail level">
+              <button type="button" class="view-mode-button active" data-view-mode="normal" aria-pressed="true">Normal</button>
+              <button type="button" class="view-mode-button" data-view-mode="expert" aria-pressed="false">Expert</button>
+            </div>
+            <small id="view-mode-help">Essential answer and next action.</small>
+          </div>
+        </div>
+        <div id="result" class="empty-state">
+          <p class="empty-icon" aria-hidden="true">◎</p>
+          <p><strong>Ready to investigate.</strong></p>
+          <p>Submit a claim to check live official evidence, see what the AI understood, and review the evidence behind the result.</p>
+        </div>
+      </section>
+
+      <section class="how-it-works" aria-labelledby="how-heading">
+        <p class="step-label">How it works</p>
+        <h2 id="how-heading">AI finds meaning. Evidence rules decide.</h2>
+        <div class="process-grid">
+          <article><span>01</span><h3>Understand</h3><p>Extract the incident, location, time, requested action, and language.</p></article>
+          <article><span>02</span><h3>Retrieve</h3><p>Use local multilingual AI to rank semantically similar trusted evidence.</p></article>
+          <article><span>03</span><h3>Verify</h3><p>Require fresh evidence with a matching claim type and compatible location.</p></article>
+        </div>
+        <p class="non-affiliation">AEGIS is an independent demonstrator and is not affiliated with or endorsed by any government authority.</p>
       </section>
     </main>
 

@@ -5,7 +5,7 @@
     "base_url": "https://sachet.ndma.gov.in/cap_public_website/rss/rss_india.xml",
     "allowed_hosts": ["sachet.ndma.gov.in"],
     "enabled": true,
-    "parser": "cap-rss-v1",
+    "parser": "cap-rss-v2",
     "cache_ttl_seconds": 300,
     "notes": "Official India CAP RSS feed listed for National Disaster Management Authority of India in the WMO Register of Alerting Authorities."
   },
@@ -14,9 +14,19 @@
     "name": "India Meteorological Department CAP RSS",
     "base_url": "https://cap-sources.s3.amazonaws.com/in-imd-en/rss.xml",
     "allowed_hosts": ["cap-sources.s3.amazonaws.com"],
-    "enabled": false,
+    "enabled": true,
     "parser": "cap-rss-v1",
     "cache_ttl_seconds": 300,
-    "notes": "Disabled by default. WMO lists IMD CAP alerts, but the current app uses NDMA SACHET as the primary official live feed."
+    "notes": "Public CAP alert feed attributed to India Meteorological Department and listed in WMO/IMD documentation."
+  },
+  {
+    "id": "imd-district-nowcast-rss",
+    "name": "India Meteorological Department District Nowcast RSS",
+    "base_url": "https://mausam.imd.gov.in/imd_latest/contents/dist_nowcast_rss.php",
+    "allowed_hosts": ["mausam.imd.gov.in"],
+    "enabled": true,
+    "parser": "imd-nowcast-rss",
+    "cache_ttl_seconds": 300,
+    "notes": "Public IMD district nowcast feed documented by IMD. Parsed as candidate weather evidence and subject to freshness/location rules."
   }
 ]

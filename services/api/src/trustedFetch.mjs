@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateEvidenceRecord } from "./evidence.mjs";
+import { INDIA_LOCATIONS } from "./claimExtractor.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../..");
@@ -148,8 +149,8 @@ async function fetchText(url, options) {
   }
 }
 
-function parseSource(source, xml) {
-  if (source.parser !== "cap-rss-v1") {
+export function parseTrustedSourceXml(source, xml) {
+  if (!["cap-rss-v1", "cap-rss-v2", "imd-nowcast-rss"].includes(source.parser)) {
     throw new Error(`Unsupported trusted-source parser: ${source.parser}`);
   }
 
@@ -157,6 +158,8 @@ function parseSource(source, xml) {
     .slice(0, 60)
     .map((item) => rssItemToEvidence(source, item));
 }
+
+const parseSource = parseTrustedSourceXml;
 
 function parseRssItems(xml) {
   const items = [];
@@ -168,18 +171,31 @@ function parseRssItems(xml) {
     const description = xmlValue(rawItem, "description");
     const link = xmlValue(rawItem, "link") || xmlValue(rawItem, "guid");
     const pubDate = xmlValue(rawItem, "pubDate") || xmlValue(rawItem, "updated") || xmlValue(rawItem, "dc:date");
+    const cap = {
+      identifier: xmlValue(rawItem, "cap:identifier") || xmlValue(rawItem, "identifier"),
+      event: xmlValue(rawItem, "cap:event") || xmlValue(rawItem, "event"),
+      severity: xmlValue(rawItem, "cap:severity") || xmlValue(rawItem, "severity"),
+      urgency: xmlValue(rawItem, "cap:urgency") || xmlValue(rawItem, "urgency"),
+      certainty: xmlValue(rawItem, "cap:certainty") || xmlValue(rawItem, "certainty"),
+      sent: xmlValue(rawItem, "cap:sent") || xmlValue(rawItem, "sent"),
+      effective: xmlValue(rawItem, "cap:effective") || xmlValue(rawItem, "effective"),
+      expires: xmlValue(rawItem, "cap:expires") || xmlValue(rawItem, "expires"),
+      area: xmlValue(rawItem, "cap:areaDesc") || xmlValue(rawItem, "areaDesc"),
+      instruction: xmlValue(rawItem, "cap:instruction") || xmlValue(rawItem, "instruction")
+    };
     if (!title && !description) continue;
-    items.push({ title, description, link, pubDate });
+    items.push({ title, description, link, pubDate, cap });
   }
 
   return items;
 }
 
 function rssItemToEvidence(source, item) {
-  const text = [item.title, item.description].filter(Boolean).join(" ");
-  const publishedAt = normalizeDate(item.pubDate) ?? new Date().toISOString();
+  const cap = item.cap ?? {};
+  const text = [item.title, item.description, cap.event, cap.area, cap.instruction].filter(Boolean).join(" ");
+  const publishedAt = normalizeDate(cap.sent) ?? normalizeDate(item.pubDate) ?? new Date().toISOString();
   const sourceUrl = item.link && isLikelyHttpUrl(item.link) ? item.link : source.base_url;
-  const assertion = inferAssertion(text);
+  const assertion = inferAssertion(text, cap);
   const idHash = crypto
     .createHash("sha256")
     .update(`${source.id}|${sourceUrl}|${item.title}|${publishedAt}`)
@@ -198,23 +214,34 @@ function rssItemToEvidence(source, item) {
     scope: assertion.location,
     fixture_type: "live_fetch",
     live_metadata: {
-      identifier: sourceUrl,
-      event: assertion.predicate,
-      severity: inferSeverity(text),
-      urgency: inferUrgency(text),
-      certainty: "observed_or_likely",
-      effective_at: publishedAt,
-      expires_at: inferExpiry(text, publishedAt),
-      instruction: cleanText(item.description || item.title)
+      identifier: cleanText(cap.identifier) || sourceUrl,
+      event: cleanText(cap.event) || assertion.predicate,
+      area_description: cleanText(cap.area) || assertion.location,
+      severity: normalizeCapValue(cap.severity) || inferSeverity(text),
+      urgency: normalizeCapValue(cap.urgency) || inferUrgency(text),
+      certainty: normalizeCapValue(cap.certainty) || "unknown",
+      effective_at: normalizeDate(cap.effective) ?? publishedAt,
+      expires_at: normalizeDate(cap.expires) ?? inferExpiry(text, publishedAt),
+      instruction: cleanText(cap.instruction || item.description || item.title),
+      cap_fields_present: Object.values(cap).filter(Boolean).length > 0
     },
     assertions: [assertion]
   };
 }
 
-function inferAssertion(text) {
+function inferAssertion(text, cap = {}) {
   const lower = text.toLowerCase();
-  const location = inferLocation(text);
-  const weatherTerms = ["weather", "rain", "thunderstorm", "cyclone", "storm", "flood", "lightning", "heat wave", "cold wave", "warning", "alert", "watch"];
+  const location = inferLocation(cap.area || text);
+  const weatherTerms = [
+    "weather", "forecast", "rain", "thunderstorm", "cyclone", "storm", "flood", "lightning", "heat wave", "cold wave",
+    "बारिश", "वर्षा", "बाढ़", "वज्रपात", "मेघगर्जन", "आंधी", "चक्रवात", "तूफान", "बिजली", "पाऊस", "पूर", "वादळ", "अतिवृष्टी",
+    "વરસાદ", "વાવાઝોડ", "વીજળી", "પૂર",
+    "বৃষ্টি", "বজ্রপাত", "ঝড়", "বন্যা",
+    "மழை", "வெள்ளம்", "புயல்", "இடி",
+    "వర్షం", "వరద", "తుఫాను", "పిడుగు",
+    "ಮಳೆ", "ಪ್ರವಾಹ", "ಚಂಡಮಾರುತ", "ಗುಡುಗು",
+    "മഴ", "വെള്ളപ്പൊക്കം", "ചുഴലിക്കാറ്റ്", "ഇടിമിന്നൽ"
+  ];
   const predicate = weatherTerms.some((term) => lower.includes(term)) ? "weather_alert" : "public_safety_alert";
   return {
     predicate,
@@ -261,9 +288,11 @@ function inferLocation(text) {
   if (forMatch) return toTitleCase(forMatch[1]);
 
   const knownLocations = [
+    ...INDIA_LOCATIONS,
     "India",
     "Delhi",
     "Mumbai",
+    "Hyderabad",
     "Kolkata",
     "Chennai",
     "Bengaluru",
@@ -291,6 +320,10 @@ function inferLocation(text) {
   }
 
   return "India";
+}
+
+function normalizeCapValue(value) {
+  return cleanText(value).toLowerCase().replace(/\s+/g, "_");
 }
 
 function toTitleCase(value) {

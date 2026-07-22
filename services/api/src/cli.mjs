@@ -4,7 +4,7 @@ const text = process.argv.slice(2).join(" ") || "Sector 4 evacuation ordered ton
 const result = await analyzeSubmission({
   text,
   location: process.env.AEGIS_DEMO_LOCATION,
-  analysis_at: "2026-07-20T18:00:00+05:30"
+  analysis_at: process.env.AEGIS_ANALYSIS_AT || new Date().toISOString()
 });
 
 console.log(JSON.stringify(result, null, 2));

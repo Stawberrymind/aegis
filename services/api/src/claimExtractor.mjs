@@ -1,6 +1,23 @@
-import { detectLanguage, includesAny, normalizeText } from "./nlp.mjs";
+import { correctSpelling, detectLanguage, includesAny, normalizeText } from "./nlp.mjs";
+
+export const INDIA_LOCATIONS = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
+  "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana",
+  "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu", "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry",
+  "Diu"
+];
+
+const INDIA_LOCATION_PATTERNS = INDIA_LOCATIONS.map((location) => ({
+  canonical: location,
+  patterns: [new RegExp(`\\b${location.replaceAll(" ", "\\s+")}\\b`, "i")]
+}));
 
 const LOCATION_PATTERNS = [
+  ...INDIA_LOCATION_PATTERNS,
+  { canonical: "Daman and Diu", patterns: [/\bdaman\s*(?:&|and)\s*diu\b/i] },
+  { canonical: "Diu", patterns: [/\bdiu\b/i] },
   { canonical: "Sector 4", patterns: [/sector\s*4/i, /सेक्टर\s*4/i] },
   { canonical: "Ward 7", patterns: [/ward\s*7/i, /वार्ड\s*7/i] },
   { canonical: "Bridge A", patterns: [/bridge\s*a/i, /पुल\s*a/i] },
@@ -36,10 +53,64 @@ const PREDICATE_RULES = [
     terms: ["weather alert", "weather warning", "rain alert", "heavy rain", "thunderstorm", "cyclone", "flood warning", "flood alert", "red alert", "orange alert", "rain warning", "बारिश", "मौसम", "चेतावनी", "बाढ़"]
   },
   {
+    predicate: "weather_alert",
+    harm_category: "hazard_warning",
+    action_requested: "follow_weather_advisory",
+    terms: ["baarish", "barish", "mausam", "chetaavni", "chetavani", "baadh", "toofan", "tufaan", "storm"]
+  },
+  {
+    predicate: "earthquake_alert",
+    harm_category: "hazard_warning",
+    action_requested: "follow_earthquake_advisory",
+    terms: ["earthquake", "earthquake warning", "seismic", "bhukamp"]
+  },
+  {
+    predicate: "landslide_alert",
+    harm_category: "hazard_warning",
+    action_requested: "avoid_affected_area",
+    terms: ["landslide", "land slide", "mudslide", "bhuskhalaan"]
+  },
+  {
+    predicate: "wildfire_alert",
+    harm_category: "hazard_warning",
+    action_requested: "avoid_affected_area",
+    terms: ["wildfire", "forest fire", "forestfire", "bushfire"]
+  },
+  {
+    predicate: "heatwave_alert",
+    harm_category: "hazard_warning",
+    action_requested: "avoid_heat_exposure",
+    terms: ["heatwave", "heat wave", "extreme heat", "garmi ki lehar"]
+  },
+  {
+    predicate: "tsunami_alert",
+    harm_category: "hazard_warning",
+    action_requested: "move_to_high_ground",
+    terms: ["tsunami", "समुद्री लहर"]
+  },
+  {
+    predicate: "health_outbreak_alert",
+    harm_category: "public_health",
+    action_requested: "follow_health_advisory",
+    terms: ["disease outbreak", "outbreak alert", "epidemic", "pandemic", "contagious disease", "mahamari", "bimari"]
+  },
+  {
     predicate: "public_safety_alert",
     harm_category: "emergency_instruction",
     action_requested: "follow_official_alert",
     terms: ["disaster alert", "official alert", "cap alert", "sachet alert", "emergency alert", "public safety alert"]
+  },
+  {
+    predicate: "emergency_drill_notice",
+    harm_category: "public_instruction",
+    action_requested: "no_action_required",
+    terms: ["drill", "simulation", "simulated emergency", "communications test", "scheduled drill", "exercise notice"]
+  },
+  {
+    predicate: "evacuation_order",
+    harm_category: "emergency_instruction",
+    action_requested: "evacuate",
+    terms: ["empty", "order to leave", "ordered to leave", "order to evacuate"]
   },
   {
     predicate: "evacuation_order",
@@ -130,6 +201,8 @@ const PREDICATE_RULES = [
 export function extractClaims(inputText, options = {}) {
   const original_text = String(inputText ?? "");
   const text = normalizeText(original_text);
+  const spelling = correctSpelling(text);
+  const correctedText = spelling.text;
   const language = options.language || detectLanguage(text);
 
   if (!text) {
@@ -141,12 +214,15 @@ export function extractClaims(inputText, options = {}) {
     };
   }
 
-  const segments = splitIntoClaimSegments(text);
-  const claims = segments.map((segment, index) => claimFromSegment(segment, language, index, options.location));
+  const segments = splitIntoClaimSegments(correctedText);
+  const contextText = options.document_context ? correctedText : null;
+  const claims = segments.map((segment, index) => claimFromSegment(segment, language, index, options.location, contextText, spelling.corrections));
 
   return {
     original_text,
     normalized_text: text,
+    corrected_text: correctedText,
+    spelling_corrections: spelling.corrections,
     language,
     claims
   };
@@ -161,10 +237,16 @@ function splitIntoClaimSegments(text) {
   return segments.length ? segments : [text];
 }
 
-function claimFromSegment(segment, language, index, locationOverride = null) {
-  const predicateRule = PREDICATE_RULES.find((rule) => includesAny(segment, rule.terms));
-  const location = normalizeLocationOverride(locationOverride) ?? findLocation(segment);
-  const time_reference = findTimeReference(segment);
+function claimFromSegment(segment, language, index, locationOverride = null, contextText = null, spellingCorrections = []) {
+  const extractionText = contextText || segment;
+  const drillRule = PREDICATE_RULES.find((rule) => rule.predicate === "emergency_drill_notice");
+  const predicateRule = includesAny(extractionText, drillRule.terms)
+    ? drillRule
+    : PREDICATE_RULES.find((rule) => includesAny(segment, rule.terms));
+  const locationMatch = findLocationDetails(extractionText);
+  const location = normalizeLocationOverride(locationOverride) ?? locationMatch?.canonical;
+  const time_reference = findTimeReference(extractionText);
+  const predicateMatch = predicateRule?.terms.find((term) => includesAny(extractionText, [term])) ?? null;
 
   return {
     claim_id: `claim-${String(index + 1).padStart(3, "0")}`,
@@ -176,7 +258,13 @@ function claimFromSegment(segment, language, index, locationOverride = null) {
     harm_category: predicateRule?.harm_category ?? "unknown",
     action_requested: predicateRule?.action_requested ?? "verify_before_forwarding",
     language,
-    extraction_method: "deterministic_multilingual_rules_v3_multi_claim"
+    extraction_method: "deterministic_multilingual_rules_v4_fuzzy_multilingual",
+    extraction_signals: {
+      predicate_term: predicateMatch,
+      location_text: locationOverride ? null : locationMatch?.matched_text ?? null,
+      time_text: time_reference === "unspecified" ? null : time_reference,
+      spelling_corrections: spellingCorrections
+    }
   };
 }
 
@@ -185,6 +273,9 @@ function normalizeLocationOverride(location) {
   const normalized = normalizeText(location).toLowerCase();
   const known = {
     india: "India",
+    diu: "Diu",
+    "daman & diu": "Daman and Diu",
+    "daman and diu": "Daman and Diu",
     hyderabad: "Hyderabad",
     hyd: "Hyderabad",
     bengaluru: "Bengaluru",
@@ -199,9 +290,16 @@ function normalizeLocationOverride(location) {
 }
 
 function findLocation(text) {
+  return findLocationDetails(text)?.canonical ?? null;
+}
+
+function findLocationDetails(text) {
+  if (/\bspecifically\s+diu\b/i.test(text)) return { canonical: "Diu", matched_text: "Diu" };
+  if (/example\s*city/i.test(text)) return { canonical: "Example City", matched_text: text.match(/example\s*city/i)?.[0] };
   for (const candidate of LOCATION_PATTERNS) {
-    if (candidate.patterns.some((pattern) => pattern.test(text))) {
-      return candidate.canonical;
+    const matched = candidate.patterns.find((pattern) => pattern.test(text));
+    if (matched) {
+      return { canonical: candidate.canonical, matched_text: text.match(matched)?.[0] ?? candidate.canonical };
     }
   }
   return null;
@@ -209,6 +307,13 @@ function findLocation(text) {
 
 function findTimeReference(text) {
   const lowered = text.toLowerCase();
+  const currentQuestion = /\b(?:is there|any|current|active|now)\b/.test(lowered)
+    || /\b(?:hai\s+kya|kya\s+hai)\b/.test(lowered);
+  const alertLanguage = /\b(?:alert|warning|advisory)\b/.test(lowered)
+    || /\b(?:chetaavni|chetavani)\b/.test(lowered);
+  if (currentQuestion && alertLanguage) return "current";
+  const datedTime = text.match(/\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:,\s*|\s+)\d{4}(?:\s*[^0-9A-Za-z\s]{0,4}\s*\d{1,2}:\d{2}\s*(?:am|pm))?/i);
+  if (datedTime) return datedTime[0].replace(/\s+/g, " ").trim();
   if (lowered.includes("tonight") || text.includes("आज रात")) return "tonight";
   if (lowered.includes("today") || text.includes("आज")) return "today";
   if (lowered.includes("tomorrow") || text.includes("कल")) return "tomorrow";

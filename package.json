@@ -6,13 +6,15 @@
   "type": "module",
   "scripts": {
     "api": "node services/api/src/server.mjs",
-    "test": "node --test tests/api/pipeline.test.mjs",
+    "test": "node --test tests/api/pipeline.test.mjs tests/api/evaluation.test.mjs",
     "demo:analyze": "node services/api/src/cli.mjs"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
-    "@huggingface/transformers": "^3.8.1"
+    "@contentauth/c2pa-node": "^0.5.0",
+    "@huggingface/transformers": "^3.8.1",
+    "tesseract.js": "^7.0.0"
   }
 }

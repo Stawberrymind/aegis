@@ -14,11 +14,16 @@ export function retrieveEvidence(claim, records, limit = 5) {
 
 export async function retrieveEvidenceHybrid(claim, records, options = {}) {
   if (options.enableEmbeddings === false || !localEmbeddingsEnabled()) {
+    const candidates = diversifyCandidates(
+      retrieveEvidenceLexical(claim, records, options.limit ?? 12),
+      options.limit ?? 12
+    );
     return {
-      candidates: retrieveEvidenceLexical(claim, records, options.limit ?? 5),
+      candidates,
       metadata: {
         retrieval_method: "lexical_fallback",
-        embedding: { ...getEmbeddingStatus(), fallback_used: true }
+        embedding: { ...getEmbeddingStatus(), fallback_used: true },
+        source_diversity: countSources(candidates)
       }
     };
   }
@@ -46,19 +51,23 @@ export async function retrieveEvidenceHybrid(claim, records, options = {}) {
       });
     }
 
-    return {
-      candidates: scored
+    const candidates = diversifyCandidates(
+      scored
         .filter((candidate) => candidate.final_retrieval_score >= 0.12)
-        .sort((a, b) => b.final_retrieval_score - a.final_retrieval_score)
-        .slice(0, options.limit ?? 5),
+        .sort((a, b) => b.final_retrieval_score - a.final_retrieval_score),
+      options.limit ?? 12
+    );
+    return {
+      candidates,
       metadata: {
         retrieval_method: "hybrid_local_embedding",
-        embedding: getEmbeddingStatus()
+        embedding: getEmbeddingStatus(),
+        source_diversity: countSources(candidates)
       }
     };
   } catch (error) {
     return {
-      candidates: retrieveEvidenceLexical(claim, records, options.limit ?? 5).map((candidate) => ({
+      candidates: diversifyCandidates(retrieveEvidenceLexical(claim, records, options.limit ?? 12), options.limit ?? 12).map((candidate) => ({
         ...candidate,
         retrieval_method: "lexical_fallback"
       })),
@@ -68,7 +77,8 @@ export async function retrieveEvidenceHybrid(claim, records, options = {}) {
           ...getEmbeddingStatus(),
           fallback_used: true,
           error: error.message
-        }
+        },
+        source_diversity: countSources(retrieveEvidenceLexical(claim, records, options.limit ?? 12))
       }
     };
   }
@@ -83,11 +93,37 @@ export function retrieveEvidenceLexical(claim, records, limit = 5) {
     claim.harm_category
   ].join(" "));
 
-  return records
+  const ranked = records
     .map((record) => scoreRecordLexically(claim, record, claimTokens))
     .filter((candidate) => candidate.retrieval_score >= 0.12)
-    .sort((a, b) => b.retrieval_score - a.retrieval_score)
-    .slice(0, limit);
+    .sort((a, b) => b.retrieval_score - a.retrieval_score);
+  return diversifyCandidates(ranked, limit);
+}
+
+function diversifyCandidates(candidates, limit) {
+  const selected = [];
+  const seenSources = new Set();
+  for (const candidate of candidates) {
+    const source = sourceKey(candidate.record);
+    if (seenSources.has(source)) continue;
+    seenSources.add(source);
+    selected.push(candidate);
+    if (selected.length >= limit) return selected;
+  }
+  for (const candidate of candidates) {
+    if (selected.includes(candidate)) continue;
+    selected.push(candidate);
+    if (selected.length >= limit) break;
+  }
+  return selected;
+}
+
+function countSources(candidates) {
+  return new Set(candidates.map((candidate) => sourceKey(candidate.record))).size;
+}
+
+function sourceKey(record) {
+  return `${record.source_name ?? "unknown source"}|${record.fixture_type ?? "fixture"}`;
 }
 
 function scoreRecordLexically(claim, record, precomputedClaimTokens = null) {

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "imd-x",
+    "name": "India Meteorological Department",
+    "handle": "@Indiametdept",
+    "url": "https://x.com/Indiametdept",
+    "authority_url": "https://mausam.imd.gov.in/",
+    "status": "reference_only",
+    "notes": "Official channel reference. Posts are not automatically used as verdict evidence."
+  },
+  {
+    "id": "ndma-x",
+    "name": "National Disaster Management Authority of India",
+    "handle": "@ndmaindia",
+    "url": "https://x.com/ndmaindia",
+    "authority_url": "https://ndma.gov.in/",
+    "status": "reference_only",
+    "notes": "Official channel reference. Posts are not automatically used as verdict evidence."
+  },
+  {
+    "id": "ndrf-x",
+    "name": "National Disaster Response Force",
+    "handle": "@NDRFHQ",
+    "url": "https://x.com/NDRFHQ",
+    "authority_url": "https://ndrf.gov.in/",
+    "status": "reference_only",
+    "notes": "Official channel reference. Posts are not automatically used as verdict evidence."
+  }
+]

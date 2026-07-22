@@ -3,48 +3,22 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeSubmission } from "./pipeline.mjs";
-import { loadEvidenceRecords } from "./evidence.mjs";
 import { getEmbeddingStatus } from "./embeddings.mjs";
+import { getStructuredExtractionStatus } from "./structuredExtractor.mjs";
 import { fetchLiveEvidence, getLastSourceStatus } from "./trustedFetch.mjs";
 
 const PORT = Number(process.env.AEGIS_API_PORT ?? 8787);
-const MAX_BODY_BYTES = 64 * 1024;
+const MAX_BODY_BYTES = 12 * 1024 * 1024;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../..");
 const webRoot = path.join(repoRoot, "apps", "web");
+const socialHandlesPath = path.join(repoRoot, "data", "sources", "social-handles.json");
 const STATIC_FILES = new Map([
   ["/", { file: "index.html", type: "text/html; charset=utf-8" }],
   ["/index.html", { file: "index.html", type: "text/html; charset=utf-8" }],
   ["/main.js", { file: "main.js", type: "text/javascript; charset=utf-8" }],
   ["/styles.css", { file: "styles.css", type: "text/css; charset=utf-8" }]
 ]);
-const DEMO_SCENARIOS = [
-  {
-    id: "live-weather-alert",
-    label: "Live weather alert",
-    text: "Is there a weather alert in India today?",
-    location: "India"
-  },
-  {
-    id: "contradicted-evacuation",
-    label: "Contradicted evacuation",
-    text: "Urgent: District officials ordered everyone in Sector 4 to evacuate tonight before 9 PM.",
-    location: ""
-  },
-  {
-    id: "supported-water-advisory",
-    label: "Supported safety advisory",
-    text: "Ward 7 residents should boil drinking water today before using it.",
-    location: ""
-  },
-  {
-    id: "not-established-video",
-    label: "Not-established altered media",
-    text: "This Market Road video is definitely edited and proves the explosion was fake.",
-    location: ""
-  }
-];
-
 const server = http.createServer(async (req, res) => {
   try {
     setCors(res);
@@ -66,14 +40,13 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/evidence") {
-      const records = await loadEvidenceRecords();
-      sendJson(res, 200, { records });
+    if (req.method === "GET" && url.pathname === "/sources/status") {
+      sendJson(res, 200, getLastSourceStatus());
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/sources/status") {
-      sendJson(res, 200, getLastSourceStatus());
+    if (req.method === "GET" && url.pathname === "/sources/social") {
+      sendJson(res, 200, JSON.parse(await readFile(socialHandlesPath, "utf8")));
       return;
     }
 
@@ -89,24 +62,21 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/models/status") {
       sendJson(res, 200, {
-        embedding: getEmbeddingStatus()
+        embedding: getEmbeddingStatus(),
+        structured_extraction: getStructuredExtractionStatus()
       });
-      return;
-    }
-
-    if (req.method === "GET" && url.pathname === "/demo/scenarios") {
-      sendJson(res, 200, { scenarios: DEMO_SCENARIOS });
       return;
     }
 
     if (req.method === "POST" && url.pathname === "/analyze") {
       const body = await readJsonBody(req);
-      if (!body.text || String(body.text).trim().length === 0) {
-        sendJson(res, 400, { error: "text is required" });
+      if ((!body.text || String(body.text).trim().length === 0) && !body.image?.data) {
+        sendJson(res, 400, { error: "text or image is required" });
         return;
       }
       const result = await analyzeSubmission({
         text: body.text,
+        image: body.image,
         language: body.language,
         location: body.location,
         analysis_at: body.analysis_at
