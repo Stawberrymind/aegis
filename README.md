@@ -106,7 +106,7 @@ Evidence-linked verdict, explanation, sources, and safe action
 - **Semantic retrieval:** local `Xenova/paraphrase-multilingual-MiniLM-L12-v2` embeddings rank paraphrased evidence. A lexical fallback remains available.
 - **OCR:** local Tesseract.js for image text, with language selection, English/Hindi fallback, confidence, and quality metadata.
 - **Translation:** local Transformers.js adapters translate supported Indian-language text into English for retrieval when needed.
-- **Voice:** local Transformers.js Whisper adapter for PCM WAV transcription.
+- **Voice (experimental):** local Transformers.js Whisper adapter for PCM WAV transcription. If the model cannot load locally, AEGIS returns an explicit unavailable state instead of inventing a transcript.
 - **Media provenance:** C2PA inspection reports support provenance metadata when present. A manual OpenAI Verify link is provided for OpenAI-specific provenance signals; this is not a general AI-image detector.
 - **Verdict logic:** deterministic evidence comparison. AI ranking scores help find candidates but do not decide the final verdict.
 
@@ -249,7 +249,7 @@ tests/web/                Playwright browser tests
 
 - The local extractor and translation adapters are not complete understanding of every Indian language or dialect.
 - OCR quality depends on resolution, script, image layout, and model availability.
-- Voice transcription currently accepts PCM WAV files only.
+- Voice transcription is experimental and accepts PCM WAV files only. The model is loaded lazily with a bounded timeout; if it is unavailable or too slow on the machine, AEGIS fails clearly and the competition demo should use text or OCR instead.
 - Local models can create a slow first request and require local cache storage.
 - Source coverage is intentionally allowlisted and narrower than the open web.
 - Public feeds can be unavailable, malformed, delayed, or changed by their publishers.

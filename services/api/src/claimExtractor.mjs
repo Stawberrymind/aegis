@@ -18,6 +18,13 @@ const LOCATION_PATTERNS = [
   ...INDIA_LOCATION_PATTERNS,
   { canonical: "Daman and Diu", patterns: [/\bdaman\s*(?:&|and)\s*diu\b/i] },
   { canonical: "Diu", patterns: [/\bdiu\b/i] },
+  { canonical: "Jammu", patterns: [/\bjammu\b/i] },
+  { canonical: "Patna", patterns: [/\bpatna\b/i] },
+  { canonical: "Ranchi", patterns: [/\branchi\b/i] },
+  { canonical: "Assam", patterns: [/\bassam\b/i, /असम/u] },
+  { canonical: "Odisha", patterns: [/\bodisha\b/i, /ओडिशा/u, /उड़ीसा/u] },
+  { canonical: "Uttarakhand", patterns: [/\buttarakhand\b/i, /उत्तराखंड/u] },
+  { canonical: "Sikkim", patterns: [/\bsikkim\b/i, /सिक्किम/u] },
   { canonical: "Sector 4", patterns: [/sector\s*4/i, /सेक्टर\s*4/i] },
   { canonical: "Ward 7", patterns: [/ward\s*7/i, /वार्ड\s*7/i] },
   { canonical: "Bridge A", patterns: [/bridge\s*a/i, /पुल\s*a/i] },
@@ -50,7 +57,7 @@ const PREDICATE_RULES = [
     predicate: "weather_alert",
     harm_category: "hazard_warning",
     action_requested: "follow_weather_advisory",
-    terms: ["weather alert", "weather warning", "rain alert", "heavy rain", "thunderstorm", "cyclone", "flood warning", "flood alert", "red alert", "orange alert", "rain warning", "बारिश", "मौसम", "चेतावनी", "बाढ़"]
+    terms: ["weather alert", "weather warning", "rain alert", "heavy rain", "thunderstorm", "cyclone", "flood", "flood warning", "flood alert", "red alert", "orange alert", "rain warning", "बारिश", "मौसम", "चेतावनी", "बाढ़"]
   },
   {
     predicate: "weather_alert",
@@ -128,7 +135,12 @@ const PREDICATE_RULES = [
     predicate: "road_closure",
     harm_category: "movement_restriction",
     action_requested: "avoid_route",
-    terms: ["road closed", "bridge closed", "closed to pedestrian", "बंद"]
+    terms: [
+      "road closed", "roads closed", "road is closed", "roads are closed", "road are closed", "road has been closed",
+      "roads have been closed", "closed the road", "bridge closed", "closed to pedestrian", "road blocked",
+      "roads blocked", "road is blocked", "traffic blocked", "highway closed", "route closed", "closed nh-",
+      "national highway", "nh-", "सड़क बंद", "राजमार्ग बंद", "राष्ट्रीय राजमार्ग", "बंद सड़क"
+    ]
   },
   {
     predicate: "altered_video_authenticity",
@@ -229,12 +241,28 @@ export function extractClaims(inputText, options = {}) {
 }
 
 function splitIntoClaimSegments(text) {
-  const segments = text
+  const sentenceSegments = text
     .split(/(?<=[.!?।])\s+|\n+/u)
     .map(normalizeText)
-    .filter(Boolean)
-    .slice(0, 5);
+    .filter(Boolean);
+  const segments = sentenceSegments.flatMap(splitCompoundSegment).slice(0, 5);
   return segments.length ? segments : [text];
+}
+
+function splitCompoundSegment(segment) {
+  const pieces = segment
+    .split(/\s+(?:and|but|while|और|लेकिन)\s+|;\s*/iu)
+    .map(normalizeText)
+    .filter(Boolean);
+  if (pieces.length < 2) return [segment];
+
+  // Keep ordinary context together, such as "Example City and surrounding areas".
+  // Split only when every part contains its own incident signal.
+  return pieces.every((piece) => matchingPredicateRule(piece)) ? pieces : [segment];
+}
+
+function matchingPredicateRule(segment) {
+  return PREDICATE_RULES.find((rule) => includesAny(segment, rule.terms)) ?? null;
 }
 
 function claimFromSegment(segment, language, index, locationOverride = null, contextText = null, spellingCorrections = []) {
@@ -307,16 +335,18 @@ function findLocationDetails(text) {
 
 function findTimeReference(text) {
   const lowered = text.toLowerCase();
-  const currentQuestion = /\b(?:is there|any|current|active|now)\b/.test(lowered)
-    || /\b(?:hai\s+kya|kya\s+hai)\b/.test(lowered);
   const alertLanguage = /\b(?:alert|warning|advisory)\b/.test(lowered)
     || /\b(?:chetaavni|chetavani)\b/.test(lowered);
-  if (currentQuestion && alertLanguage) return "current";
   const datedTime = text.match(/\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:,\s*|\s+)\d{4}(?:\s*[^0-9A-Za-z\s]{0,4}\s*\d{1,2}:\d{2}\s*(?:am|pm))?/i);
   if (datedTime) return datedTime[0].replace(/\s+/g, " ").trim();
   if (lowered.includes("tonight") || text.includes("आज रात")) return "tonight";
   if (lowered.includes("today") || text.includes("आज")) return "today";
   if (lowered.includes("tomorrow") || text.includes("कल")) return "tomorrow";
+  if (lowered.includes("this week") || text.includes("इस सप्ताह") || text.includes("इस हफ्ते")) return "this week";
+  if (lowered.includes("next week") || text.includes("अगले सप्ताह") || text.includes("अगले हफ्ते")) return "next week";
+  const currentQuestion = /\b(?:is there|any|current|active|now)\b/.test(lowered)
+    || /\b(?:hai\s+kya|kya\s+hai)\b/.test(lowered);
+  if (currentQuestion && alertLanguage) return "current";
   if (/\b\d{1,2}:\d{2}\b/.test(text) || /\b\d{1,2}\s*(am|pm)\b/i.test(text)) return "specific_time";
   return "unspecified";
 }

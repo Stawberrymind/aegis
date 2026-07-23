@@ -154,3 +154,13 @@
 ## [OUTCOMES]
 
 - 2026-07-23T18:14:00+05:30 [TOOL] Git status no longer reports the 118 MB model cache, `git check-ignore` confirms the exclusion, and `git diff --check` passes.
+
+## [PROGRESS]
+
+- 2026-07-23T18:25:00+05:30 [USER] Requested fixes for the gaps found during the 20-scenario verification pass.
+- 2026-07-23T18:25:00+05:30 [CODE] Preserved original-language claim boundaries while using translation only for missing-field enrichment; added Hindi location aliases, safe compound-claim splitting, highway/road-closure patterns, week-relative time extraction, and bounded/silent-safe voice handling.
+- 2026-07-23T18:25:00+05:30 [CODE] Added regression coverage for the exact Hindi evacuation question, Patna/Ranchi multi-claim input, NH-44 closure, this-week timing, and silent WAV handling. Marked voice transcription experimental in the UI and documentation.
+
+## [OUTCOMES]
+
+- 2026-07-23T18:25:00+05:30 [TOOL] API tests pass 52/52, browser tests pass 3/3, targeted end-to-end extraction checks pass, and `git diff --check` is clean.

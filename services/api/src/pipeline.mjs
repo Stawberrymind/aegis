@@ -32,21 +32,14 @@ export async function analyzeSubmission(input, options = {}) {
     location: input.location,
     document_context: Boolean(media)
   };
-  let extraction = extractClaims(extractedText, extractionOptions);
-  if (extractedText !== submittedText && extraction.claims.length) {
-    const originalExtraction = extractClaims(submittedText, extractionOptions);
-    extraction.claims = extraction.claims.map((claim, index) => {
-      const originalClaim = originalExtraction.claims[index];
-      if (!originalClaim) return claim;
-      return {
-        ...claim,
-        predicate: claim.predicate === "unknown_claim" ? originalClaim.predicate : claim.predicate,
-        location: claim.location === "unspecified" ? originalClaim.location : claim.location,
-        time_reference: claim.time_reference === "unspecified" ? originalClaim.time_reference : claim.time_reference,
-        harm_category: claim.harm_category === "unknown" ? originalClaim.harm_category : claim.harm_category,
-        action_requested: claim.action_requested === "verify_before_forwarding" ? originalClaim.action_requested : claim.action_requested
-      };
-    });
+  // Keep the original-language extraction as the structural source of truth.
+  // A local translation model may split or paraphrase a short message; it can
+  // enrich missing fields, but must not replace the user's claim boundaries.
+  const originalExtraction = extractClaims(submittedText, extractionOptions);
+  let extraction = originalExtraction;
+  if (extractedText !== submittedText) {
+    const translatedExtraction = extractClaims(extractedText, extractionOptions);
+    extraction = mergeTranslatedFields(originalExtraction, translatedExtraction);
   }
 
   const structuredExtraction = await enrichClaimsWithLocalAI(extractedText, extraction, {
@@ -153,6 +146,39 @@ export async function analyzeSubmission(input, options = {}) {
       "Uploaded image and audio bytes are processed in memory for this analysis and are not retained by the API.",
       "Verdicts are limited to supported, contradicted, or not_established."
     ]
+  };
+}
+
+function mergeTranslatedFields(originalExtraction, translatedExtraction) {
+  return {
+    ...originalExtraction,
+    claims: originalExtraction.claims.map((claim, index) => {
+      const translatedClaim = translatedExtraction.claims[index];
+      if (!translatedClaim) return claim;
+      const fills = {
+        predicate: claim.predicate === "unknown_claim" && translatedClaim.predicate !== "unknown_claim",
+        location: claim.location === "unspecified" && translatedClaim.location !== "unspecified",
+        time_reference: claim.time_reference === "unspecified" && translatedClaim.time_reference !== "unspecified",
+        harm_category: claim.harm_category === "unknown" && translatedClaim.harm_category !== "unknown",
+        action_requested: claim.action_requested === "verify_before_forwarding" && translatedClaim.action_requested !== "verify_before_forwarding"
+      };
+      if (!Object.values(fills).some(Boolean)) return claim;
+      return {
+        ...claim,
+        predicate: fills.predicate ? translatedClaim.predicate : claim.predicate,
+        location: fills.location ? translatedClaim.location : claim.location,
+        time_reference: fills.time_reference ? translatedClaim.time_reference : claim.time_reference,
+        harm_category: fills.harm_category ? translatedClaim.harm_category : claim.harm_category,
+        action_requested: fills.action_requested ? translatedClaim.action_requested : claim.action_requested,
+        extraction_method: `${claim.extraction_method}+translation_enrichment`,
+        extraction_signals: {
+          ...claim.extraction_signals,
+          translated_fields: Object.entries(fills)
+            .filter(([, used]) => used)
+            .map(([field]) => field)
+        }
+      };
+    })
   };
 }
 

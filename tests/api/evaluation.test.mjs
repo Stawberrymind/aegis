@@ -39,6 +39,20 @@ const evaluationCases = [
     time_reference: "tonight"
   },
   {
+    name: "understands a Hindi evacuation question without translation drift",
+    text: "\u0915\u094d\u092f\u093e \u0905\u0938\u092e \u092e\u0947\u0902 \u0906\u091c \u0928\u093f\u0915\u093e\u0938\u0940 \u0906\u0926\u0947\u0936 \u091c\u093e\u0930\u0940 \u0939\u0941\u0906 \u0939\u0948?",
+    predicate: "evacuation_order",
+    location: "Assam",
+    time_reference: "today"
+  },
+  {
+    name: "captures a relative week reference",
+    text: "Is there a Delhi heatwave warning this week?",
+    predicate: "heatwave_alert",
+    location: "Delhi",
+    time_reference: "this week"
+  },
+  {
     name: "does not invent an incident type",
     text: "Please check this message from a group chat.",
     predicate: "unknown_claim",
@@ -54,4 +68,20 @@ test("AI extraction evaluation cases remain within expected fields", () => {
     assert.equal(claim.location, expected.location, expected.name);
     assert.equal(claim.time_reference, expected.time_reference, expected.name);
   }
+});
+
+test("splits two independently located claims joined by and", () => {
+  const claims = extractClaims("There is a flood in Patna and roads are closed in Ranchi.").claims;
+  assert.equal(claims.length, 2);
+  assert.equal(claims[0].predicate, "weather_alert");
+  assert.equal(claims[0].location, "Patna");
+  assert.equal(claims[1].predicate, "road_closure");
+  assert.equal(claims[1].location, "Ranchi");
+});
+
+test("classifies a national-highway closure near Jammu", () => {
+  const claim = extractClaims("The government has closed NH-44 near Jammu today.").claims[0];
+  assert.equal(claim.predicate, "road_closure");
+  assert.equal(claim.location, "Jammu");
+  assert.equal(claim.time_reference, "today");
 });

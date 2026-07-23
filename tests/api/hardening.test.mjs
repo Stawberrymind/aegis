@@ -256,6 +256,13 @@ test("resamples non-16-kHz PCM WAV input for the transcription model", async () 
   assert.equal(result.original_sample_rate, 8000);
 });
 
+test("returns no speech for a silent WAV without loading the local Whisper model", async () => {
+  const wav = makeWav(16000, 1600);
+  const result = await transcribeAudio({ data: `data:audio/wav;base64,${wav.toString("base64")}`, mime_type: "audio/wav", language: "en" });
+  assert.equal(result.status, "no_speech_found");
+  assert.match(result.reason, /no audible signal/i);
+});
+
 test("rate limiter returns retry information without logging request identity", () => {
   const limiter = createRateLimiter({ windowMs: 1000, maxRequests: 2 });
   assert.equal(limiter.check("local", 100).allowed, true);

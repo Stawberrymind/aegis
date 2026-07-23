@@ -16,9 +16,28 @@ export async function transcribeAudio({ data, mime_type, language = "" }, option
     return unavailable("Only PCM WAV audio is supported by the local adapter in this release.", startedAt, mime_type);
   }
 
+  const samples = resamplePcm(waveform.samples, waveform.sampleRate, MODEL_SAMPLE_RATE);
+  if (!options.provider && samples.every((sample) => Math.abs(sample) < 0.000001)) {
+    return {
+      status: "no_speech_found",
+      text: "",
+      language: language || "auto",
+      engine: "transformers.js",
+      model: MODEL,
+      sample_rate: MODEL_SAMPLE_RATE,
+      original_sample_rate: waveform.sampleRate,
+      duration_seconds: Number((samples.length / MODEL_SAMPLE_RATE).toFixed(2)),
+      duration_ms: Date.now() - startedAt,
+      reason: "The WAV contains no audible signal."
+    };
+  }
+
   try {
-    const transcriber = options.provider ?? await getTranscriber();
-    const samples = resamplePcm(waveform.samples, waveform.sampleRate, MODEL_SAMPLE_RATE);
+    const transcriber = options.provider ?? await withTimeout(
+      getTranscriber(),
+      Number(process.env.AEGIS_TRANSCRIPTION_MODEL_TIMEOUT_MS ?? 30_000),
+      "voice model loading"
+    );
     const output = await withTimeout(
       transcriber(samples, {
         chunk_length_s: 30,

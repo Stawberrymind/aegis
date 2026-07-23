@@ -188,7 +188,7 @@ function parseTime(output, sourceText) {
   const text = cleanField(output, "unspecified");
   if (/^(?:unspecified|unknown|none|no time|no specific time)$/i.test(text)) return "unspecified";
   const source = String(sourceText ?? "").toLowerCase();
-  const hasTimeCue = /\b(?:now|current|currently|right now|today|tonight|tomorrow)\b/.test(source)
+  const hasTimeCue = /\b(?:now|current|currently|right now|today|tonight|tomorrow|this week|next week)\b/.test(source)
     || /\b\d{1,2}:\d{2}\b/.test(source)
     || /\b(?:19|20)\d{2}\b/.test(source);
   if (!hasTimeCue) return "unspecified";
@@ -197,6 +197,8 @@ function parseTime(output, sourceText) {
   if (/\btoday\b/.test(lowered)) return "today";
   if (/\btonight\b/.test(lowered)) return "tonight";
   if (/\btomorrow\b/.test(lowered)) return "tomorrow";
+  if (/\bthis week\b/.test(lowered)) return "this week";
+  if (/\bnext week\b/.test(lowered)) return "next week";
   return text;
 }
 

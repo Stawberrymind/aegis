@@ -74,9 +74,9 @@
         </div>
 
         <div class="media-upload voice-upload">
-          <label for="claim-audio">Or upload a voice note</label>
+          <label for="claim-audio">Or upload a voice note (experimental)</label>
           <input id="claim-audio" type="file" accept="audio/wav,audio/x-wav,audio/wave" />
-          <p>Local Whisper transcription currently accepts PCM WAV files. Audio is processed in memory and is not retained.</p>
+          <p>Local Whisper transcription accepts PCM WAV files. If the local model is unavailable, AEGIS reports that clearly instead of inventing a transcript. Audio is processed in memory and is not retained.</p>
           <div id="audio-preview" class="audio-preview" hidden></div>
         </div>
 
