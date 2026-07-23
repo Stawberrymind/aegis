@@ -8,7 +8,6 @@
 [![OCR](https://img.shields.io/badge/OCR-Tesseract.js-2563EB)](#what-the-ai-does)
 [![API tests](https://img.shields.io/badge/API%20tests-49%20passing-16A34A)](#tests)
 [![Browser tests](https://img.shields.io/badge/browser%20tests-3%20passing-16A34A)](#tests)
-[![Competition prototype](https://img.shields.io/badge/status-competition%20prototype-D97706)](#competition-status)
 [![GitHub repository](https://img.shields.io/badge/GitHub-Stawberrymind%2Faegis-181717?logo=github&logoColor=white)](https://github.com/Stawberrymind/aegis)
 
 AEGIS is a local, multilingual crisis-claim verification tool for India. 
