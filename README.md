@@ -8,22 +8,53 @@
 [![OCR](https://img.shields.io/badge/OCR-Tesseract.js-2563EB)](#what-the-ai-does)
 [![API tests](https://img.shields.io/badge/API%20tests-49%20passing-16A34A)](#tests)
 [![Browser tests](https://img.shields.io/badge/browser%20tests-3%20passing-16A34A)](#tests)
-[![Competition prototype](https://img.shields.io/badge/status-competition%20prototype-D97706)](#competition-status)
 [![GitHub repository](https://img.shields.io/badge/GitHub-Stawberrymind%2Faegis-181717?logo=github&logoColor=white)](https://github.com/Stawberrymind/aegis)
 
-AEGIS is a local-first, multilingual crisis-claim verification demonstrator for India. A user can submit a forwarded message, image, or PCM WAV voice note; AEGIS extracts the claim, checks allowlisted official sources, and explains whether the available evidence **supports**, **contradicts**, or **does not establish** the claim.
+AEGIS is a local, multilingual crisis-claim verification tool for India. 
 
-AEGIS is designed for civil-defence information resilience. It is not an emergency authority, a surveillance tool, a universal fake-news detector, or a deepfake verdict engine.
+A user can submit a forwarded message, image, or PCM WAV voice note. AEGIS extracts the claim, checks allowlisted official sources, and explains whether the available evidence **supports**, **contradicts**, or **does not establish** the claim.
 
-## Competition status
+> [!NOTE]  
+> It is *NOT* an emergency authority, a surveillance tool, a universal fake-news detector, or a deepfake verdict engine.
+## Setup
+You can either run this locally or check it out at: 
 
-The repository contains a working competition prototype with:
 
-- Local AI for multilingual normalization, typo-tolerant claim extraction, translation, semantic retrieval, OCR, and optional voice transcription.
+> [!IMPORTANT]  
+>Requirements: Node.js 20, Git, Internet access for live feeds and first-time local model downloads and no API keys are required
+
+ For Local Setup:
+```bash
+git clone https://github.com/Stawberrymind/aegis.git
+```
+Enable extended sources (optional):
+```
+$env:AEGIS_ENABLE_EXTENDED_SOURCES="true"
+```
+Enable the local structured AI model:
+```
+$env:AEGIS_ENABLE_LOCAL_STRUCTURED_AI="true"
+```
+
+Start AEGIS:
+```powershell
+npm run api
+```
+Open:
+```
+http://localhost:8787
+```
+
+The same Node process serves the browser UI and API. The secure default binds to `127.0.0.1`, so the app is private to the local machine.
+
+
+## Features
+
+- Local AI for multilingual normalisation, typo-tolerant claim extraction, translation, semantic retrieval, OCR, and optional voice transcription.
 - Real-time fetching from configured NDMA SACHET and India Meteorological Department feeds.
 - Evidence-linked verdicts with freshness, type, location, source-diversity, and conflict safeguards.
 - Upload support for PNG, JPEG, WebP images and PCM WAV voice notes.
-- All Indian states and Union Territories, including Diu, in the location selector.
+- All Indian states and Union Territories in the location selector.
 - A four-step interface: **Add claim -> Set context -> Check -> Review**.
 - Normal and Expert modes, an analysis timeline, source status, and evidence explanations.
 - No paid model API key required.
@@ -34,7 +65,7 @@ The current validation baseline is 49 API tests and 3 Playwright browser tests p
 
 During a crisis, people receive messages claiming that an evacuation order, road closure, weather warning, public-authority announcement, donation request, or official statement is real. The useful question is not simply "is this fake?" It is:
 
-> What does trusted evidence say about this exact claim, location, and time?
+>** What does trusted evidence say about this exact claim, location, and time?**
 
 AEGIS makes that question easier to answer while preserving uncertainty.
 
@@ -71,12 +102,12 @@ Evidence-linked verdict, explanation, sources, and safe action
 ### AI and model layers
 
 - **Claim understanding:** deterministic multilingual rules, spelling correction, Hinglish patterns, Indian location recognition, and multiple-claim splitting.
-- **Optional structured AI:** schema-constrained local `Xenova/flan-t5-small` extraction fills only missing fields. It cannot produce a verdict.
+- **Structured AI:** schema-constrained local `Xenova/flan-t5-small` extraction fills only missing fields. It cannot produce a verdict.
 - **Semantic retrieval:** local `Xenova/paraphrase-multilingual-MiniLM-L12-v2` embeddings rank paraphrased evidence. A lexical fallback remains available.
 - **OCR:** local Tesseract.js for image text, with language selection, English/Hindi fallback, confidence, and quality metadata.
 - **Translation:** local Transformers.js adapters translate supported Indian-language text into English for retrieval when needed.
 - **Voice:** local Transformers.js Whisper adapter for PCM WAV transcription.
-- **Media provenance:** C2PA inspection reports supported provenance metadata when present. A manual OpenAI Verify link is provided for OpenAI-specific provenance signals; this is not a general AI-image detector.
+- **Media provenance:** C2PA inspection reports support provenance metadata when present. A manual OpenAI Verify link is provided for OpenAI-specific provenance signals; this is not a general AI-image detector.
 - **Verdict logic:** deterministic evidence comparison. AI ranking scores help find candidates but do not decide the final verdict.
 
 See the [model card](docs/model-card.md) for intended use, non-use, and limitations.
@@ -94,8 +125,6 @@ AEGIS does not search the open web and never fetches arbitrary URLs supplied by 
 ### Optional extended sources
 
 - [PIB Fact Check](https://factcheck.pib.gov.in/)
-- Goa State Disaster Management Authority public advisories
-- Meghalaya State Disaster Management Authority public advisories
 
 Optional sources are disabled by default because public pages can change structure or require access controls. AEGIS never bypasses CAPTCHA, login requirements, or source restrictions.
 
@@ -132,43 +161,12 @@ Read [privacy and safety](docs/privacy-and-safety.md), [data card](docs/data-car
 - Internet access for live source feeds and first-run model downloads
 - No paid API key
 
-### Install
 
-```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
-cd aegis
-npm ci
-```
-
-### Start the app
-
-```bash
-npm run api
-```
-
-Open [http://localhost:8787](http://localhost:8787).
-
-The same Node process serves the browser UI and API. The secure default binds to `127.0.0.1`, so the app is private to the local machine.
 
 ### First analysis
 
 The first analysis with local embeddings enabled may download the embedding model. Later runs reuse the local cache. The optional structured extractor and Whisper adapter may also download models on first use.
 
-Try a location-scoped claim:
-
-```text
-Is there a rain alert in Diu today?
-```
-
-Choose **Diu**, click **Check this claim**, then inspect the Answer, Understanding, Evidence, Timeline, and Expert tabs.
-
-### Command-line analysis
-
-```bash
-npm run demo:analyze -- "Is there a weather alert in India today?"
-```
-
-The CLI is useful for smoke testing. The browser UI is the intended competition demonstration path.
 
 ## Configuration
 
@@ -247,18 +245,6 @@ tests/api/                Pipeline, security, source, and evaluation tests
 tests/web/                Playwright browser tests
 ```
 
-## Competition demo
-
-Use the [90-second demo script](docs/demo-script.md):
-
-1. Start the API and open the browser UI.
-2. Submit a location-scoped weather question.
-3. Show what AEGIS understood before showing the verdict.
-4. Open Evidence to show trusted-source records and freshness.
-5. Open Timeline to show the analysis process.
-6. Switch to Expert mode to show retrieval, OCR, provenance, and policy detail.
-7. Explain that the AI finds meaning and ranks evidence, while deterministic evidence rules produce the verdict.
-
 ## Known limitations
 
 - The local extractor and translation adapters are not complete understanding of every Indian language or dialect.
@@ -271,22 +257,10 @@ Use the [90-second demo script](docs/demo-script.md):
 - The in-memory rate limiter is appropriate for a local or controlled competition demo, not a high-traffic public service.
 - C2PA or OpenAI Verify signals do not prove that a claim is true or that media is AI-generated.
 
-AEGIS should be presented as a responsible, evidence-linked competition prototype - not as production emergency infrastructure.
 
-## Further documentation
 
-- [Handover and product contract](HANDOVER.md)
-- [Architecture](docs/architecture.md)
-- [Model card](docs/model-card.md)
-- [Data card](docs/data-card.md)
-- [Trusted-source fetching](docs/source-fetching.md)
-- [Source history](docs/source-history.md)
-- [Privacy and safety](docs/privacy-and-safety.md)
-- [Media inspection](docs/media-inspection.md)
-- [Voice transcription](docs/voice-transcription.md)
-- [Evaluation plan](docs/evaluation.md)
 
-## Pitch
+## Why AEGIS?
 
 > AEGIS is an AI evidence layer that helps citizens verify harmful crisis claims in their own language before they are forwarded as fact.
 
