@@ -134,3 +134,23 @@
 ## [OUTCOMES]
 
 - 2026-07-23T00:20:00+05:30 [TOOL] README diff check remains clean; no application behavior changed.
+
+## [PROGRESS]
+
+- 2026-07-23T00:45:00+05:30 [USER] Requested a 20-scenario creative verification pass.
+- 2026-07-23T00:45:00+05:30 [TOOL] Ran 16 live text scenarios against an isolated API instance with fixtures disabled; all returned HTTP 200 and only allowed verdict vocabulary, but Hindi evacuation wording, multi-claim splitting, and road-closure wording exposed extraction gaps.
+- 2026-07-23T00:45:00+05:30 [TOOL] Ran the supplied drill image through live OCR/provenance: OCR completed with high quality, extracted Example City and the dated drill time, and provenance was unavailable without making an authenticity claim. A 1-pixel image safely returned no text.
+- 2026-07-23T00:45:00+05:30 [TOOL] Ran an isolated local Whisper PCM WAV test; it ended unavailable/terminated after approximately 163 seconds, so voice transcription is not reliable enough for the competition demo without further work.
+
+## [OUTCOMES]
+
+- 2026-07-23T00:45:00+05:30 [TOOL] Existing Playwright browser regression remains green: 3/3 tests passed.
+
+## [PROGRESS]
+
+- 2026-07-23T18:14:00+05:30 [USER] GitHub Desktop warned that the locally downloaded Whisper model exceeded GitHub's 100 MB file limit.
+- 2026-07-23T18:14:00+05:30 [CODE] Added `data/transcription-cache/` to `.gitignore`; the generated model cache remains available locally but is excluded from commits and pushes.
+
+## [OUTCOMES]
+
+- 2026-07-23T18:14:00+05:30 [TOOL] Git status no longer reports the 118 MB model cache, `git check-ignore` confirms the exclusion, and `git diff --check` passes.

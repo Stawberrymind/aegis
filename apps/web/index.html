@@ -69,7 +69,7 @@
         <div class="media-upload">
           <label for="claim-image">Or upload an image containing the claim</label>
           <input id="claim-image" type="file" accept="image/png,image/jpeg,image/webp" />
-          <p>OCR runs locally with open-source Tesseract.js. Images are processed by your local AEGIS service and are not sent to OpenAI.</p>
+          <p>OCR runs locally with open-source Tesseract.js. Image bytes are processed in memory and not retained by default.</p>
           <div id="image-preview" class="image-preview" hidden></div>
         </div>
 

@@ -23,6 +23,7 @@ data/source-cache/
 data/embedding-cache/
 data/translation-cache/
 data/structured-ai-cache/
+data/transcription-cache/
 *.sqlite3
 
 # Editors and operating systems
